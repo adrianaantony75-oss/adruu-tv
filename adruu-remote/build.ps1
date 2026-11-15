@@ -15,7 +15,7 @@ if (Test-Path $out) { Remove-Item -Recurse -Force $out }
 New-Item -ItemType Directory -Force "$out\gen", "$out\classes", "$out\dex" | Out-Null
 
 & "$bt\aapt2.exe" compile --dir "$here\res" -o "$out\res.zip"
-& "$bt\aapt2.exe" link -o "$out\base.apk" -I $jar --manifest "$here\AndroidManifest.xml" --java "$out\gen" "$out\res.zip"
+& "$bt\aapt2.exe" link -o "$out\base.apk" -I $jar --manifest "$here\AndroidManifest.xml" -A "$here\assets" --java "$out\gen" "$out\res.zip"
 if ($LASTEXITCODE) { throw "aapt2 link failed" }
 
 $src = @(Get-ChildItem "$here\src", "$out\gen" -Recurse -Filter *.java | ForEach-Object FullName)

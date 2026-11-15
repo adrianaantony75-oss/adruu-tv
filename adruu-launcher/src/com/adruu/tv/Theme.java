@@ -28,9 +28,26 @@ final class Theme {
     static final Theme CHRISTMAS = new Theme("christmas", "Christmas", 0xFF0B1A12, 0xFF240C0C, 0xFF1F2E24, 0xFFE63946, 0xFFFFFFFF, 0xFFF4FFF7, 0xFF95AD9E, "Merry Christmas");
     static final Theme NEW_YEAR = new Theme("newyear", "New Year", 0xFF0A0A0A, 0xFF1C1708, 0xFF201C10, 0xFFFFD166, 0xFF2A1F00, 0xFFFFFAEB, 0xFFADA58C, "Happy New Year");
 
-    /** Festivals whose date moves each year: {year, month, day}. Update when new years are known. */
-    private static final int[][] ONAM_DAYS = {{2026, 8, 26}, {2027, 9, 12}};     // Thiruvonam (approx.)
-    private static final int[][] DIWALI_DAYS = {{2026, 11, 8}, {2027, 10, 29}};  // Lakshmi Puja (approx.)
+    // National days: tricolour (saffron accent on deep navy, white text)
+    static final Theme REPUBLIC = new Theme("republic", "Republic Day", 0xFF0A1330, 0xFF0F2A1C, 0xFF16224A, 0xFFFF9933, 0xFF2A1400, 0xFFFFFFFF, 0xFFB8C2D9, "Happy Republic Day");
+    static final Theme INDEPENDENCE = new Theme("independence", "Independence Day", 0xFF0A1330, 0xFF0F2A1C, 0xFF16224A, 0xFFFF9933, 0xFF2A1400, 0xFFFFFFFF, 0xFFB8C2D9, "Happy Independence Day");
+    static final Theme GANDHI = new Theme("gandhi", "Gandhi Jayanti", 0xFF1A1712, 0xFF26221A, 0xFF2C281F, 0xFFF4EBD6, 0xFF2A2418, 0xFFFFFBF2, 0xFFB7AE9A, "Remembering Gandhiji · Gandhi Jayanti");
+    static final Theme PONGAL = new Theme("pongal", "Pongal", 0xFF1A1205, 0xFF2E1F08, 0xFF33240C, 0xFFFFB627, 0xFF2A1A00, 0xFFFFF7E6, 0xFFBDAE8E, "Happy Pongal");
+    static final Theme HOLI = new Theme("holi", "Holi", 0xFF1A0A24, 0xFF0A1E2A, 0xFF2A1438, 0xFFFF4FA3, 0xFFFFFFFF, 0xFFFFF0FA, 0xFFC0A8C8, "Happy Holi");
+    static final Theme EID = new Theme("eid", "Eid", 0xFF06201A, 0xFF0A2E25, 0xFF0F3A30, 0xFFE8C468, 0xFF2A2000, 0xFFF2FFF9, 0xFF9FC2B6, "Eid Mubarak");
+
+    /**
+     * Festivals whose date moves each year: {year, month, day}. Approximate, from published calendars;
+     * add new years as they're announced (Claude can update these).
+     */
+    private static final int[][] ONAM_DAYS = {{2026, 8, 26}, {2027, 9, 12}};     // Thiruvonam
+    private static final int[][] DIWALI_DAYS = {{2026, 11, 8}, {2027, 10, 29}};  // Lakshmi Puja
+    private static final int[][] HOLI_DAYS = {{2026, 3, 4}, {2027, 3, 22}};
+    private static final int[][] EID_DAYS = {{2026, 3, 20}, {2027, 3, 10}};      // Eid al-Fitr (depends on the moon)
+
+    /** Every theme the TV switches to by itself, for the phone app's list. */
+    static final String AUTO_FESTIVALS = "Republic Day, Pongal, Holi, Eid, Vishu, Independence Day, Onam, "
+            + "Gandhi Jayanti, Diwali, Christmas, New Year";
 
     static boolean isValid(String id) {
         if ("photo".equals(id)) return true;
@@ -60,8 +77,14 @@ final class Theme {
         if (m == 12 && d >= 20 && d <= 27) return CHRISTMAS;
         if ((m == 12 && d >= 30) || (m == 1 && d <= 2)) return NEW_YEAR;
         if (m == 4 && d >= 12 && d <= 16) return VISHU;
+        if (m == 1 && d >= 25 && d <= 26) return REPUBLIC;
+        if (m == 8 && d >= 14 && d <= 15) return INDEPENDENCE;
+        if (m == 10 && d >= 1 && d <= 2) return GANDHI;
+        if (m == 1 && d >= 13 && d <= 16) return PONGAL;
         if (near(c, ONAM_DAYS, 9, 1)) return ONAM;      // Onam season: ~10 days up to Thiruvonam
         if (near(c, DIWALI_DAYS, 2, 2)) return DIWALI;
+        if (near(c, HOLI_DAYS, 1, 0)) return HOLI;
+        if (near(c, EID_DAYS, 1, 1)) return EID;
         return null;
     }
 

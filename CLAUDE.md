@@ -36,6 +36,23 @@ Every call needs `?t=<token>` (or header `X-ADRUU-Token`). Without it the TV ans
 `/api/config` keys: `theme, wallpaper (all|plane|car|bike|off), festival, clicks, intro, perf, subtitles,
 city, mode, guest, lockOn (false only), hidden[], favourites[], personal[]` (lists are package names).
 
+### Added in 1.9–2.0
+| Call | What it does |
+|---|---|
+| `GET /api/lock` · `/api/unlock` | instant; without a PIN it's a "phone lock" (only the phone unlocks; a TV restart clears it) |
+| `POST /api/pin` `{"pin":"123456"}` or `{"remove":true}` | set / remove the TV PIN |
+| `GET /api/mouse/move?dx&dy` · `/api/mouse/tap` · `/api/mouse/scroll?dir=` | phone touchpad / air mouse / scroll |
+| `GET /api/power?state=off` | standby (ON is impossible: standby cuts the TV's Wi-Fi) |
+| `GET /api/apps/uninstall?pkg=` · `/api/apps/store?pkg=\|q=` · `POST /api/order` | uninstall (TV confirms), Play Store, tile order |
+| `POST /api/wallpaper/upload?album=&theme=1` · `GET /api/wallpaper/list` · `/api/wallpaper/delete?album&name` | albums, photo theme |
+| `POST /api/intro/upload` (≤200 MB) · `GET /api/intro/clear` | custom startup video / default animation |
+| `POST /api/intruder/image` · `/api/intruder/audio` · `GET /api/intruder/clear?what=` · `/api/intruder/test` | lock-screen "intruder" picture / voice; test makes SOUND |
+| `GET /api/notify/test` | test phone alert (ntfy.sh topic; config `notify:true`) |
+| `POST /api/reports/add` | family bug report (from the phone app, Malayalam OK) |
+| `GET /api/font/manrope\|malayalam` | fonts for the phone panel |
+Config keys added: `slideshow` (min), `tiles` (rounded/square), `lockOn` (needs PIN), `notify`, `intruderText`, `wallpaper` `album:<name>`.
+On the TV: hold OK on a tile to move it. Search key → Google Assistant. Intro replays on every wake (waits for the soundbar's ARC link).
+
 ## Phone app — ADRUU Remote (`adruu-remote/`)
 Tiny Android app (20 KB): scans the phone's Wi-Fi for `/api/hello`, pairs with the TV's code, stores the
 token, then shows the TV's control page in a WebView. Sharing a link to it opens the link on the TV.

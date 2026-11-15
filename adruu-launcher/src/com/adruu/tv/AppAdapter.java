@@ -64,6 +64,26 @@ final class AppAdapter extends BaseAdapter {
         notifyDataSetChanged();
     }
 
+    /** Moves a tile (rearrange mode). Returns the new position. Settings tiles stay at the end. */
+    int move(int from, int to) {
+        int last = apps.size() - 1;
+        while (last >= 0 && apps.get(last).pkg.startsWith("adruu:")) last--;
+        if (from < 0 || from > last) return from;
+        to = Math.max(0, Math.min(last, to));
+        if (to == from) return from;
+        App a = apps.remove(from);
+        apps.add(to, a);
+        notifyDataSetChanged();
+        return to;
+    }
+
+    /** Current tile order (package names), saved as the home screen order. */
+    List<String> order() {
+        List<String> out = new ArrayList<>();
+        for (App a : apps) if (!a.pkg.startsWith("adruu:")) out.add(a.pkg);
+        return out;
+    }
+
     /** Slow (reads icons), so call off the main thread. homeScreen = apply hidden/guest filters. */
     static List<App> load(Context c, boolean homeScreen) {
         PackageManager pm = c.getPackageManager();
@@ -117,6 +137,11 @@ final class AppAdapter extends BaseAdapter {
         return list;
     }
 
+    /** Tile corner radius from the "Tile style" setting (rounded / square). */
+    static int radius(Context c) {
+        return UI.dp(c, "square".equals(new Prefs(c).tileStyle()) ? 3 : 16);
+    }
+
     @Override public int getCount() { return apps.size(); }
     @Override public App getItem(int i) { return apps.get(i); }
     @Override public long getItemId(int i) { return i; }
@@ -131,7 +156,7 @@ final class AppAdapter extends BaseAdapter {
             box.setClipChildren(false);
 
             FrameLayout card = new FrameLayout(c);
-            card.setBackground(UI.round(t.surface, UI.dp(c, 14)));
+            card.setBackground(UI.round(t.surface, radius(c)));
             card.setClipToOutline(true);
             box.addView(card, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, UI.dp(c, 94)));
 

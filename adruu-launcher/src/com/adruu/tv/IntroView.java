@@ -39,7 +39,7 @@ final class IntroView extends View {
         done = onDone;
         setBackground(UI.backdrop(t));
         logo.setColor(t.text);
-        logo.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
+        logo.setTypeface(Fonts.ui(c, true));
         logo.setTextAlign(Paint.Align.CENTER);
         logo.setLetterSpacing(0.35f);
 
@@ -101,6 +101,7 @@ final class IntroView extends View {
     @Override
     protected void onDraw(Canvas c) {
         if (finished) return;
+        if (start == 0) return;   // waiting for the soundbar: show only the background until begin()
         float s = (SystemClock.uptimeMillis() - start) / 1000f;
         float w = getWidth(), h = getHeight();
         float groundY = h * 0.66f;

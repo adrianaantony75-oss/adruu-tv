@@ -130,7 +130,14 @@ public class MainActivity extends Activity {
                 if (prefs.lockOn()) sLocked = true;
             } else if (a.equals(Intent.ACTION_SCREEN_ON)) {
                 loadWallpaper(true);   // a fresh photo every time the TV wakes
-                if (sLocked && prefs.lockOn()) {
+                Notify.send(c, "TV turned on", "Someone switched the TV on", "tv");
+                if (prefs.intro() && !isLockedNow(prefs)) {
+                    // Switching on with the remote is a wake from standby, not a restart: replay the intro.
+                    wakeIntro = true;
+                    startActivity(new Intent(c, MainActivity.class)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT));
+                }
+                if (isLockedNow(prefs)) {
                     // Bring the lock to the front even if an app was open (needs "display over other apps").
                     startActivity(new Intent(c, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
                 }
@@ -186,6 +193,8 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle b) {
         super.onCreate(b);
         Health.install(this);
+        Intruder.warmUp(this);
+        if (sColdStart) Notify.send(this, "TV turned on", "The TV was switched on", "tv");
         sInstance = new WeakReference<>(this);
         prefs = new Prefs(this);
         if (!sLockInit) {
@@ -321,6 +330,12 @@ public class MainActivity extends Activity {
         adapter = new AppAdapter(this, theme);
         grid.setAdapter(adapter);
         grid.setOnItemClickListener((p, v, pos, id) -> launch(adapter.getItem(pos)));
+        // Hold OK on a tile to rearrange it.
+        grid.setOnItemLongClickListener((p, v, pos, id) -> {
+            if (adapter.getItem(pos).pkg.startsWith("adruu:")) return false;
+            startMove(pos);
+            return true;
+        });
         grid.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override public void onItemSelected(AdapterView<?> p, View v, int pos, long id) {
                 if (grid.hasFocus()) {
@@ -413,7 +428,7 @@ public class MainActivity extends Activity {
         if (v != null) {
             v.animate().scaleX(1.09f).scaleY(1.09f).setDuration(140).start();
             AppAdapter.Holder hd = (AppAdapter.Holder) v.getTag();
-            hd.card.setForeground(UI.ring(theme.accent, UI.dp(this, 14), UI.dp(this, 3)));
+            hd.card.setForeground(UI.ring(theme.accent, AppAdapter.radius(this), UI.dp(this, 3)));
             hd.name.setTextColor(theme.text);
         }
     }
@@ -461,17 +476,88 @@ public class MainActivity extends Activity {
         }
     }
 
+    /** Locked from the phone (works without a PIN). Kept in memory only: a TV restart unlocks, as a safety net. */
+    static volatile boolean sPhoneLocked;
+
+    static boolean isLockedNow(Prefs p) {
+        return (sLocked && p.lockOn()) || sPhoneLocked;
+    }
+
     private void refreshLock() {
-        boolean show = sLocked && prefs.lockOn();
+        boolean show = isLockedNow(prefs);
         lock.setVisibility(show ? View.VISIBLE : View.GONE);
         home.setDescendantFocusability(show ? ViewGroup.FOCUS_BLOCK_DESCENDANTS : ViewGroup.FOCUS_AFTER_DESCENDANTS);
-        if (show) lock.reset();
-        else if (!home.hasFocus()) grid.requestFocus();
+        if (show) {
+            lock.phoneMode(sPhoneLocked && !prefs.hasPin());
+            lock.reset();
+        } else if (!home.hasFocus()) grid.requestFocus();
     }
 
     private void unlock() {
         sLocked = false;
+        sPhoneLocked = false;
         refreshLock();
+    }
+
+    // ---- rearrange tiles: hold OK, move with arrows, OK (or Back) to drop ----
+    private int moving = -1;
+    private Toast moveHint;
+
+    private void startMove(int pos) {
+        moving = pos;
+        moveHint = Toast.makeText(this, "Moving " + adapter.getItem(pos).label + ": use the arrows, then press OK", Toast.LENGTH_LONG);
+        moveHint.show();
+        markMoving();
+    }
+
+    private void markMoving() {
+        grid.post(() -> {
+            View v = grid.getSelectedView();
+            if (v == null) return;
+            AppAdapter.Holder hd = (AppAdapter.Holder) v.getTag();
+            hd.card.setForeground(UI.ring(0xFFFFFFFF, AppAdapter.radius(this), UI.dp(this, 5)));
+            v.setScaleX(1.14f);
+            v.setScaleY(1.14f);
+        });
+    }
+
+    private boolean handleMoveKey(int k) {
+        int to;
+        switch (k) {
+            case KeyEvent.KEYCODE_DPAD_LEFT: to = moving - 1; break;
+            case KeyEvent.KEYCODE_DPAD_RIGHT: to = moving + 1; break;
+            case KeyEvent.KEYCODE_DPAD_UP: to = moving - COLS; break;
+            case KeyEvent.KEYCODE_DPAD_DOWN: to = moving + COLS; break;
+            case KeyEvent.KEYCODE_DPAD_CENTER: case KeyEvent.KEYCODE_ENTER: case KeyEvent.KEYCODE_BACK:
+                prefs.favourites(adapter.order());
+                moving = -1;
+                if (moveHint != null) moveHint.cancel();
+                Toast.makeText(this, "Saved", Toast.LENGTH_SHORT).show();
+                highlighted = null;
+                adapter.notifyDataSetChanged();
+                grid.post(() -> highlight(grid.getSelectedView()));
+                return true;
+            default:
+                return true;
+        }
+        moving = adapter.move(moving, to);
+        highlighted = null;
+        grid.setSelection(moving);
+        markMoving();
+        return true;
+    }
+
+    static MainActivity current() {
+        MainActivity a = sInstance.get();
+        return a == null || a.isDestroyed() ? null : a;
+    }
+
+    /** Called when a setting that changes the whole layout (tile style) was changed from the phone. */
+    static void rebuildFromOutside() {
+        MainActivity a = sInstance.get();
+        if (a == null || a.isDestroyed()) return;
+        a.highlighted = null;
+        a.build();
     }
 
     /** Called after a wallpaper upload or delete from the phone. */
@@ -513,10 +599,42 @@ public class MainActivity extends Activity {
         refreshLock();
     }
 
+    /**
+     * The soundbar wakes a few seconds after the TV (HDMI-CEC). Waits until the HDMI ARC audio output
+     * exists (max 6 s) so the intro sound isn't lost, then runs {@code go}.
+     */
+    private void whenAudioReady(Runnable go) {
+        final android.media.AudioManager am = getSystemService(android.media.AudioManager.class);
+        final long t0 = android.os.SystemClock.uptimeMillis();
+        h.post(new Runnable() {
+            @Override public void run() {
+                boolean arc = false;
+                for (android.media.AudioDeviceInfo d : am.getDevices(android.media.AudioManager.GET_DEVICES_OUTPUTS))
+                    if (d.getType() == android.media.AudioDeviceInfo.TYPE_HDMI_ARC) arc = true;
+                long waited = android.os.SystemClock.uptimeMillis() - t0;
+                if ((arc && waited >= 900) || waited >= 6000) go.run();
+                else h.postDelayed(this, 250);
+            }
+        });
+    }
+
+    /** Set when the TV wakes from standby: play the startup animation again, like switching on. */
+    private boolean wakeIntro;
+
     private void showIntro() {
+        if (intro != null || introVideo != null) return;
         java.io.File custom = Media.introFile(this);
         if (custom.exists() && custom.length() > 0) {
-            showVideoIntro(custom);
+            FrameLayout cover = new FrameLayout(this);
+            cover.setBackgroundColor(0xFF000000);
+            root.addView(cover);
+            introVideo = cover;
+            whenAudioReady(() -> {
+                if (introVideo != cover) return;   // skipped meanwhile
+                root.removeView(cover);
+                introVideo = null;
+                showVideoIntro(custom);
+            });
             return;
         }
         intro = new IntroView(this, theme, () -> {
@@ -526,8 +644,12 @@ public class MainActivity extends Activity {
             refreshLock();
         });
         root.addView(intro);
-        intro.begin();
-        Synth.intro();
+        final IntroView v = intro;
+        whenAudioReady(() -> {
+            if (intro != v) return;   // skipped meanwhile
+            v.begin();
+            Synth.intro();
+        });
     }
 
     @Override
@@ -544,13 +666,21 @@ public class MainActivity extends Activity {
         loadApps();
         loadWallpaper(false);
         tick();
+        if (wakeIntro) {
+            wakeIntro = false;
+            showIntro();
+        }
+        if (intruderPending) {
+            intruderPending = false;
+            h.postDelayed(() -> intruder("Someone tried to open an app while the TV is locked"), 300);
+        }
     }
 
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         // Home pressed while already home: jump back to the first tile.
-        if (intro == null && !sLocked && grid != null) {
+        if (intro == null && !isLockedNow(prefs) && grid != null) {
             grid.setSelection(0);
             grid.requestFocus();
         }
@@ -573,7 +703,12 @@ public class MainActivity extends Activity {
                     || k == KeyEvent.KEYCODE_DPAD_LEFT || k == KeyEvent.KEYCODE_DPAD_RIGHT
                     || k == KeyEvent.KEYCODE_DPAD_CENTER || k == KeyEvent.KEYCODE_ENTER;
             if (nav && prefs.clicks() && e.getRepeatCount() % 3 == 0) Synth.click();
-            if (sLocked && prefs.lockOn()) {
+            if (moving >= 0 && handleMoveKey(k)) return true;
+            if (isLockedNow(prefs)) {
+                if (!prefs.hasPin() && k != KeyEvent.KEYCODE_HOME) {   // phone lock: TV keys do nothing...
+                    intruder("Someone pressed the remote while the TV is locked");   // ...except call out the intruder
+                    return true;
+                }
                 if (k >= KeyEvent.KEYCODE_0 && k <= KeyEvent.KEYCODE_9) {
                     lock.digit(k - KeyEvent.KEYCODE_0);
                     return true;
@@ -590,6 +725,63 @@ public class MainActivity extends Activity {
     @Override
     public void onBackPressed() {
         // Home screen: Back does nothing.
+    }
+
+    /** The remote's Search key: Google TV's home used to handle it, so hand it to Google Assistant. */
+    @Override
+    public boolean onSearchRequested() {
+        if (isLockedNow(prefs)) return true;
+        try {
+            startActivity(new Intent(Intent.ACTION_ASSIST).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        } catch (Exception e) {
+            try { startActivity(new Intent(Intent.ACTION_VOICE_COMMAND).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); } catch (Exception ignored) { }
+        }
+        return true;
+    }
+
+    /** Wallpaper slideshow: a new photo every N minutes while the home screen is showing. */
+    private final Runnable slideshow = new Runnable() {
+        @Override public void run() {
+            int m = prefs.slideshow();
+            if (m <= 0) return;
+            if (moving < 0 && !isLockedNow(prefs)) loadWallpaper(true);
+            h.postDelayed(this, m * 60_000L);
+        }
+    };
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        h.removeCallbacks(slideshow);
+    }
+
+    @Override
+    protected void onPostResume() {
+        super.onPostResume();
+        h.removeCallbacks(slideshow);
+        int m = prefs.slideshow();
+        if (m > 0) h.postDelayed(slideshow, m * 60_000L);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        // Locked from the phone but something else got opened (e.g. by voice): bring the lock straight back.
+        if (isLockedNow(prefs)) h.postDelayed(() -> {
+            if (!isLockedNow(prefs)) return;
+            intruderPending = true;
+            startActivity(new Intent(this, MainActivity.class)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT));
+        }, 400);
+    }
+
+    private boolean intruderPending;
+
+    /** Someone is trying to use the locked TV: the pointing man + dialogue on screen, and an alert to the phone. */
+    void intruder(String what) {
+        Intruder.show(root, theme, prefs);
+        prefs.addEvent(what);
+        Notify.send(this, "Someone is trying to use the TV", what, "warning");
     }
 
     @Override

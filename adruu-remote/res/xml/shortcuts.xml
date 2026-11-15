@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Long-press the ADRUU Remote icon: one tap to lock, unlock or turn off the TV. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut android:shortcutId="lock" android:enabled="true"
+        android:icon="@drawable/ic_launcher" android:shortcutShortLabel="@string/sc_lock">
+        <intent android:action="com.adruu.remote.LOCK"
+            android:targetPackage="com.adruu.remote" android:targetClass="com.adruu.remote.MainActivity" />
+    </shortcut>
+    <shortcut android:shortcutId="unlock" android:enabled="true"
+        android:icon="@drawable/ic_launcher" android:shortcutShortLabel="@string/sc_unlock">
+        <intent android:action="com.adruu.remote.UNLOCK"
+            android:targetPackage="com.adruu.remote" android:targetClass="com.adruu.remote.MainActivity" />
+    </shortcut>
+    <shortcut android:shortcutId="off" android:enabled="true"
+        android:icon="@drawable/ic_launcher" android:shortcutShortLabel="@string/sc_off">
+        <intent android:action="com.adruu.remote.OFF"
+            android:targetPackage="com.adruu.remote" android:targetClass="com.adruu.remote.MainActivity" />
+    </shortcut>
+</shortcuts>

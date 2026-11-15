@@ -83,6 +83,20 @@ final class RemoteServer {
         return "TV-IP";
     }
 
+    /** Every IPv4 address of the TV: home Wi-Fi and, with Tailscale, its 100.x "away" address. */
+    static JSONArray addresses() {
+        JSONArray a = new JSONArray();
+        try {
+            for (NetworkInterface ni : Collections.list(NetworkInterface.getNetworkInterfaces())) {
+                if (!ni.isUp() || ni.isLoopback()) continue;
+                for (InetAddress ad : Collections.list(ni.getInetAddresses()))
+                    if (ad instanceof Inet4Address) a.put(ad.getHostAddress());
+            }
+        } catch (Exception ignored) {
+        }
+        return a;
+    }
+
     static String phoneUrl(Context c) {
         return "http://" + address(c) + ":" + PORT + "/?t=" + new Prefs(c).token();
     }
@@ -122,7 +136,8 @@ final class RemoteServer {
             // --- open calls (no token): finding the TV and pairing the phone app ---
             if (path.equals("/api/hello")) {
                 JSONObject hi = new JSONObject().put("ok", true).put("app", "ADRUU")
-                        .put("name", android.os.Build.MODEL).put("version", BuildInfo.VERSION);
+                        .put("name", android.os.Build.MODEL).put("version", BuildInfo.VERSION)
+                        .put("addresses", addresses());   // includes the Tailscale 100.x address when installed
                 send(sock, 200, "application/json", hi.toString().getBytes(StandardCharsets.UTF_8));
                 return;
             }
@@ -168,8 +183,9 @@ final class RemoteServer {
                     boolean theme = "1".equals(q.get("theme"));
                     try {
                         if (theme) Media.themeFromPhoto(c, tmp);
-                        String name = Media.saveWallpaper(c, tmp);
-                        p.wallpaper("mine");
+                        String album = Media.cleanAlbum(q.get("album"));
+                        String name = Media.saveWallpaper(c, tmp, album);
+                        p.wallpaper("album:" + album);
                         if (theme) p.theme("photo");
                         main.post(MainActivity::reloadWallpaper);
                         r.put("ok", true).put("name", name).put("message", theme ? "Wallpaper and matching theme set" : "Wallpaper added");
@@ -192,6 +208,33 @@ final class RemoteServer {
                 send(sock, r.optBoolean("ok") ? 200 : 400, "application/json", r.toString().getBytes(StandardCharsets.UTF_8));
                 return;
             }
+            if ((path.equals("/api/intruder/image") || path.equals("/api/intruder/audio")) && method.equals("POST")) {
+                JSONObject r = new JSONObject();
+                if (len < 200 || len > 15 * 1024 * 1024) {
+                    r.put("ok", false).put("error", "File must be under 15 MB");
+                } else {
+                    boolean image = path.endsWith("image");
+                    java.io.File tmp = Media.receive(c, in, len, "intruder.tmp");
+                    java.io.File dst = image ? Intruder.imageFile(c) : Intruder.audioFile(c);
+                    //noinspection ResultOfMethodCallIgnored
+                    dst.delete();
+                    if (image && android.graphics.BitmapFactory.decodeFile(tmp.getPath()) == null) {
+                        //noinspection ResultOfMethodCallIgnored
+                        tmp.delete();
+                        r.put("ok", false).put("error", "That isn't a picture the TV can read");
+                    } else if (tmp.renameTo(dst)) {
+                        r.put("ok", true).put("message", image ? "Lock-screen picture saved" : "Lock-screen voice saved");
+                    } else {
+                        r.put("ok", false).put("error", "Couldn't save the file");
+                    }
+                }
+                send(sock, r.optBoolean("ok") ? 200 : 400, "application/json", r.toString().getBytes(StandardCharsets.UTF_8));
+                return;
+            }
+            if (path.equals("/api/font/manrope") || path.equals("/api/font/malayalam")) {   // fonts for the phone app
+                send(sock, 200, "font/ttf", asset(path.endsWith("manrope") ? "font_manrope.ttf" : "font_malayalam.ttf"));
+                return;
+            }
             if (path.equals("/api/remote/apk")) {   // newest ADRUU Remote, bundled with the TV app
                 send(sock, 200, "application/vnd.android.package-archive", asset("remote.apk"));
                 return;
@@ -207,19 +250,33 @@ final class RemoteServer {
         JSONObject r = new JSONObject().put("ok", true);
         switch (path) {
             case "/api/status":
-                r.put("locked", MainActivity.sLocked && p.lockOn())
+                r.put("locked", MainActivity.isLockedNow(p))
                         .put("lockOn", p.lockOn())
                         .put("theme", p.theme()).put("festival", p.festival()).put("wallpaper", p.wallpaper())
                         .put("mode", p.mode()).put("modeNow", Modes.effective(c, p.mode()))
                         .put("guest", p.guest()).put("clicks", p.clicks()).put("intro", p.intro())
                         .put("perf", p.perfOverlay()).put("subtitles", p.subtitles()).put("city", p.city())
                         .put("mouse", MouseService.isActive()).put("mouseReady", MouseService.isReady())
-                        .put("lockHelp", "Lock TV shows a 6-digit PIN screen; it only works after a PIN is set in ADRUU settings on the TV.")
+                        .put("lockHelp", p.hasPin()
+                                ? "Lock TV shows the PIN screen at once. Unlock with the PIN or from the phone."
+                                : "Lock TV blocks the TV at once. Only the phone app can unlock it (or restarting the TV).")
                         .put("hasPin", p.hasPin())
                         .put("introVideoMB", Media.introFile(c).exists() ? Media.introFile(c).length() >> 20 : -1)
                         .put("maxIntroMB", Media.MAX_INTRO_MB)
                         .put("version", BuildInfo.VERSION)
+                        .put("festivals", Theme.AUTO_FESTIVALS)
+                        .put("notify", p.notifyOn()).put("notifyTopic", p.notifyOn() ? p.notifyTopic() : "")
+                        .put("intruderText", p.intruderText())
+                        .put("intruderImage", Intruder.imageFile(c).exists())
+                        .put("intruderAudio", Intruder.audioFile(c).exists())
+                        .put("malayalamVoice", Intruder.hasMalayalamVoice())
+                        .put("accent", String.format("#%06X", Theme.current(p).accent & 0xFFFFFF))
+                        .put("accentBg", String.format("#%06X", Theme.current(p).bg2 & 0xFFFFFF))
+                        .put("festivalNow", Theme.festival(java.util.Calendar.getInstance()) == null ? "" : Theme.festival(java.util.Calendar.getInstance()).name)
+                        .put("tvName", android.os.Build.MODEL)
+                        .put("tiles", p.tileStyle())
                         .put("foreground", Modes.sForeground)
+                        .put("foregroundLabel", appLabel(Modes.sForeground))
                         .put("events", new JSONArray(p.eventsJson()));
                 JSONArray themes = new JSONArray();
                 for (Theme t : Theme.BASE) themes.put(new JSONObject().put("id", t.id).put("name", t.name));
@@ -228,13 +285,19 @@ final class RemoteServer {
                 return r;
             case "/api/unlock":
                 MainActivity.sLocked = false;
+                MainActivity.sPhoneLocked = false;
                 p.addEvent("Unlocked from phone");
                 main.post(MainActivity::refreshFromOutside);
                 return r;
             case "/api/lock":
-                if (!p.lockOn()) return r.put("ok", false).put("error", "Set a PIN and turn on TV lock first");
-                MainActivity.sLocked = true;
-                main.post(() -> c.startActivity(new Intent(c, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)));
+                // Immediate: the lock screen comes to the front over whatever app is open.
+                if (p.lockOn()) MainActivity.sLocked = true; else MainActivity.sPhoneLocked = true;
+                p.addEvent("Locked from phone");
+                main.post(() -> {
+                    c.startActivity(new Intent(c, MainActivity.class)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT));
+                    MainActivity.refreshFromOutside();
+                });
                 return r;
             case "/api/mode": {
                 String id = q.getOrDefault("id", "auto");
@@ -339,11 +402,18 @@ final class RemoteServer {
                 return r.put("message", "Play Store opened on the TV");
             }
             case "/api/wallpaper/list":
-                return r.put("photos", Media.listWallpapers(c));
+                return r.put("photos", Media.listWallpapers(c)).put("albums", Media.albums(c))
+                        .put("slideshow", p.slideshow());
             case "/api/wallpaper/delete":
-                if (!Media.deleteWallpaper(c, q.get("name"))) return r.put("ok", false).put("error", "Not found");
+                if (!Media.deleteWallpaper(c, q.get("album"), q.get("name"))) return r.put("ok", false).put("error", "Not found");
                 main.post(MainActivity::reloadWallpaper);
                 return r;
+            case "/api/order": {   // phone app: new home screen order (JSON array of package names)
+                JSONArray a = new JSONArray(body.isEmpty() ? "[]" : body);
+                p.favourites(strings(a));
+                main.post(MainActivity::refreshFromOutside);
+                return r.put("count", a.length());
+            }
             case "/api/intro/clear":
                 //noinspection ResultOfMethodCallIgnored
                 Media.introFile(c).delete();
@@ -359,6 +429,42 @@ final class RemoteServer {
                 Health.record("user", who + ": " + text, j.put("text", text).toString());
                 return r.put("message", "Thanks! Report saved on the TV.");
             }
+            case "/api/pin": {   // set or remove the TV PIN from the paired phone
+                JSONObject j = body.isEmpty() ? new JSONObject() : new JSONObject(body);
+                String pin = j.optString("pin", "");
+                if (j.optBoolean("remove")) {
+                    p.lockOn(false);
+                    MainActivity.sLocked = false;
+                    p.removePin();
+                    main.post(MainActivity::refreshFromOutside);
+                    return r.put("message", "PIN removed");
+                }
+                if (!pin.matches("\\d{6}")) return r.put("ok", false).put("error", "The PIN must be 6 digits");
+                p.setPin(pin);
+                p.fails(0);
+                p.addEvent("PIN changed from phone");
+                main.post(MainActivity::refreshFromOutside);
+                return r.put("message", "PIN saved");
+            }
+            case "/api/intruder/clear": {
+                String what = q.getOrDefault("what", "");
+                if (what.equals("image")) //noinspection ResultOfMethodCallIgnored
+                    Intruder.imageFile(c).delete();
+                else if (what.equals("audio")) //noinspection ResultOfMethodCallIgnored
+                    Intruder.audioFile(c).delete();
+                else return r.put("ok", false).put("error", "what=image or audio");
+                return r;
+            }
+            case "/api/intruder/test":
+                main.post(() -> {
+                    MainActivity a = MainActivity.current();
+                    if (a != null) a.intruder("Test from the phone app");
+                });
+                return r.put("message", "Showing on the TV");
+            case "/api/notify/test":
+                if (!p.notifyOn()) return r.put("ok", false).put("error", "Turn on phone alerts first");
+                Notify.send(c, "Test alert", "Alerts from your TV are working", "white_check_mark");
+                return r.put("message", "Test alert sent");
             case "/api/reports":
                 return r.put("reports", Health.reports(c));
             case "/api/reports/clear":
@@ -396,6 +502,19 @@ final class RemoteServer {
         if (j.has("wallpaper") && !Wallpaper.isValid(j.getString("wallpaper")))
             return r.put("ok", false).put("error", "Unknown wallpaper: " + j.getString("wallpaper"));
         if (j.has("wallpaper")) { p.wallpaper(j.getString("wallpaper")); changed.put("wallpaper"); }
+        if (j.has("tiles")) {
+            String ts = j.getString("tiles");
+            if (!ts.equals("rounded") && !ts.equals("square")) return r.put("ok", false).put("error", "tiles: rounded or square");
+            p.tileStyle(ts);
+            changed.put("tiles");
+            main.post(MainActivity::rebuildFromOutside);
+        }
+        if (j.has("slideshow")) {
+            int m = j.getInt("slideshow");
+            if (m < 0 || m > 240) return r.put("ok", false).put("error", "Slideshow minutes must be 0-240");
+            p.slideshow(m);
+            changed.put("slideshow");
+        }
         if (j.has("theme")) { p.theme(j.getString("theme")); changed.put("theme"); }
         if (j.has("festival")) { p.festival(j.getBoolean("festival")); changed.put("festival"); }
         if (j.has("clicks")) { p.clicks(j.getBoolean("clicks")); changed.put("clicks"); }
@@ -405,12 +524,37 @@ final class RemoteServer {
         if (j.has("city")) { p.city(j.getString("city")); changed.put("city"); }
         if (j.has("mode")) { p.mode(j.getString("mode")); changed.put("mode"); }
         if (j.has("guest")) { p.guest(j.getBoolean("guest")); changed.put("guest"); }
-        if (j.has("lockOn") && !j.getBoolean("lockOn")) { p.lockOn(false); MainActivity.sLocked = false; changed.put("lockOn"); }
+        if (j.has("lockOn")) {
+            boolean on = j.getBoolean("lockOn");
+            if (on && !p.hasPin()) return r.put("ok", false).put("error", "Set a PIN first");
+            p.lockOn(on);
+            if (!on) MainActivity.sLocked = false;
+            changed.put("lockOn");
+        }
+        if (j.has("notify")) { p.notifyOn(j.getBoolean("notify")); changed.put("notify"); }
+        if (j.has("intruderText")) {
+            String s = j.getString("intruderText").trim();
+            if (s.isEmpty() || s.length() > 120) return r.put("ok", false).put("error", "Dialogue: 1 to 120 characters");
+            p.intruderText(s);
+            changed.put("intruderText");
+        }
         if (j.has("hidden")) { p.hidden(strings(j.getJSONArray("hidden"))); changed.put("hidden"); }
         if (j.has("favourites")) { p.favourites(strings(j.getJSONArray("favourites"))); changed.put("favourites"); }
         if (j.has("personal")) { p.personal(strings(j.getJSONArray("personal"))); changed.put("personal"); }
         main.post(MainActivity::refreshFromOutside);
         return r.put("changed", changed);
+    }
+
+    /** Friendly name of the app on screen, for the phone's status card. */
+    private String appLabel(String pkg) {
+        if (pkg == null || pkg.equals(c.getPackageName())) return "Home screen";
+        if (pkg.contains("dream")) return "Screensaver";
+        try {
+            android.content.pm.PackageManager pm = c.getPackageManager();
+            return String.valueOf(pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)));
+        } catch (Exception e) {
+            return "Home screen";
+        }
     }
 
     /** Remote buttons: back, home, playpause, next, prev, volup, voldown, mute. Volume reaches the soundbar over HDMI-CEC. */
@@ -518,6 +662,7 @@ final class RemoteServer {
 
     private static void send(Socket s, int code, String type, byte[] body) throws Exception {
         String status = code == 200 ? "OK" : code == 401 ? "Unauthorized" : code == 413 ? "Too Large" : "Bad Request";
+        if (type.equals("application/json")) type = "application/json; charset=utf-8";   // Malayalam text
         String head = "HTTP/1.1 " + code + " " + status + "\r\nContent-Type: " + type
                 + "\r\nContent-Length: " + body.length + "\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n";
         OutputStream o = s.getOutputStream();

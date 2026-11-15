@@ -31,7 +31,7 @@ Check "phone page needs token" ((Code "$base/").code -eq 401)
 # --- status ---
 $before = Invoke-RestMethod "$base/api/status?t=$t"
 Check "status ok" ($before.ok -eq $true)
-Check "status has 5 themes" ($before.themes.Count -eq 5)
+Check "status has at least 5 themes" ($before.themes.Count -ge 5)
 Check "status has events list" ($null -ne $before.events)
 $sw = [Diagnostics.Stopwatch]::StartNew(); Invoke-RestMethod "$base/api/status?t=$t" | Out-Null; $sw.Stop()
 Check "status answers in < 1.5 s" ($sw.ElapsedMilliseconds -lt 1500) "$($sw.ElapsedMilliseconds) ms"
@@ -55,7 +55,7 @@ Check "unknown mode rejected" ((Code "$base/api/mode?id=banana&t=$t").code -eq 4
 Check "open non-web link rejected" ((Code "$base/api/open?url=file:///sdcard&t=$t").code -eq 400)
 Check "open without url rejected" ((Code "$base/api/open?t=$t").code -eq 400)
 Check "launch unknown app rejected" ((Code "$base/api/launch?pkg=no.such.app&t=$t").code -eq 400)
-Check "lock without PIN set rejected" ((Code "$base/api/lock?t=$t").code -eq 400)
+Check "dialogue longer than 120 characters rejected" ((Code "$base/api/config?t=$t" "POST" ("{""intruderText"":""" + ("x" * 130) + """}")).code -eq 400)
 Check "empty APK upload rejected" ((Code "$base/api/apk?t=$t" "POST" "").code -eq 400)
 Check "unknown path -> 400" ((Code "$base/api/zzz?t=$t").code -eq 400)
 Check "oversized config body rejected, server survives" (((Code "$base/api/config?t=$t" "POST" ("x" * 2000000)).code -ne 200) -and ((Code "$base/api/status?t=$t").code -eq 200))

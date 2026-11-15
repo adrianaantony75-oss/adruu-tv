@@ -25,11 +25,13 @@ final class Wallpaper {
     private Wallpaper() {}
 
     static boolean isValid(String k) {
+        if (k != null && k.startsWith("album:") && k.length() > 6) return true;
         for (String x : KINDS) if (x.equals(k)) return true;
         return false;
     }
 
     static String label(String k) {
+        if (k.startsWith("album:")) return "Album: " + k.substring(6);
         switch (k) {
             case "plane": return "Planes";
             case "car": return "Cars";
@@ -49,10 +51,13 @@ final class Wallpaper {
         List<String> out = new ArrayList<>();
         try {
             // Flat in assets/ as wall_<kind>-NN.jpg (sub-folders get Windows backslashes when built on Windows).
-            // Family uploads (full paths) come first; "My photos" shows only those.
-            java.io.File[] mine = Media.wallDir(c).listFiles();
-            if (mine != null && (kind.equals("all") || kind.equals("mine")))
-                for (java.io.File f : mine) out.add(f.getPath());
+            // Family uploads (full paths): "mine" = every album, "album:Name" = one album.
+            if (kind.startsWith("album:")) {
+                for (java.io.File f : Media.photos(c, kind.substring(6))) out.add(f.getPath());
+                return out;
+            }
+            if (kind.equals("all") || kind.equals("mine"))
+                for (java.io.File f : Media.photos(c, null)) out.add(f.getPath());
             if (kind.equals("mine")) return out;
             String[] files = c.getAssets().list("");
             if (files == null) return out;

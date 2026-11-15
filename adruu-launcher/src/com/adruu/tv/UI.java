@@ -54,7 +54,7 @@ final class UI {
         v.setText(s);
         v.setTextSize(sp);
         v.setTextColor(color);
-        v.setTypeface(Typeface.create("sans-serif", bold ? Typeface.BOLD : Typeface.NORMAL));
+        v.setTypeface(Fonts.ui(c, bold));
         v.setIncludeFontPadding(false);
         // Soft shadow keeps text readable on top of photo wallpapers.
         v.setShadowLayer(dp(c, 4), 0, dp(c, 1), 0xB0000000);

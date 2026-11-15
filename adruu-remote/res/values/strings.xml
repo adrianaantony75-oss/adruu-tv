@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sc_lock">Lock TV</string>
+    <string name="sc_unlock">Unlock TV</string>
+    <string name="sc_off">TV off</string>
+</resources>

@@ -31,6 +31,25 @@ Built for a 2 GB TCL Google TV (Android 11) that lagged badly with the stock hom
 - Family "Report a problem" with voice typing (Malayalam or English); reports are saved on the TV
 - Updates itself from the TV; an "away" address (Tailscale) lets you control the TV from anywhere
 
+### New in 2.0
+- Professional redesign of the phone app: tab bar (Home · Remote · Apps · Personalize · Settings), Manrope font,
+  colours that follow the TV's festival theme
+- Instant lock / unlock (works without a PIN), set the PIN from the phone, lock-on-power-on
+- Lock-screen "intruder" moment: a man points at whoever tries the locked TV and says your dialogue
+  (default "നീ പോ മോനേ ദിനേശാ", spoken in Malayalam); use your own picture, text or voice clip
+- Phone alerts via ntfy (TV turned on, wrong PIN, someone using the locked TV)
+- Festival themes switch by themselves: Republic Day, Pongal, Holi, Eid, Vishu, Independence Day, Onam,
+  Gandhi Jayanti, Diwali, Christmas, New Year
+- Wallpaper albums + slideshow, rounded or square tiles, hold OK to rearrange tiles, uninstall several apps,
+  web search on the TV, startup video up to 200 MB, intro replays on every power-on and waits for the soundbar
+
+## Publishing on Google Play (to do)
+- Developer account (one-time fee), privacy policy URL, store listing, screenshots, content rating, Data safety form
+- Phone app targets API 35 (current requirement). The TV app targets API 30 and uses ADB-granted permissions,
+  an accessibility service and a HOME screen: Play reviews these strictly (accessibility needs a declaration),
+  so the TV app is best shipped as a separate Android TV listing after review, or kept as a sideload.
+- Bundled wallpapers are CC BY-SA: keep `wall_credits.txt` reachable from the app (it is, under Settings).
+
 ## Install
 Download the APKs from [Releases](../../releases).
 - **TV:** enable USB debugging on the TV, then `adb install ADRUU.apk`. Making it the home screen on Google TV,

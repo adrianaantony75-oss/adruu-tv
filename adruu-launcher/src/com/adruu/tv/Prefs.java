@@ -37,6 +37,34 @@ final class Prefs {
     String wallpaper() { return p.getString("wallpaper", "all"); }
     void wallpaper(String k) { p.edit().putString("wallpaper", k).apply(); }
 
+    // ---- phone alerts (ntfy.sh) ----
+    boolean notifyOn() { return p.getBoolean("notify", false); }
+    void notifyOn(boolean on) { p.edit().putBoolean("notify", on).apply(); if (on) notifyTopic(); }
+    /** Private random topic name, created once. */
+    String notifyTopic() {
+        String t = p.getString("ntopic", null);
+        if (t == null) {
+            byte[] b = new byte[12];
+            new SecureRandom().nextBytes(b);
+            t = "adruu-" + hex(b);
+            p.edit().putString("ntopic", t).apply();
+        }
+        return t;
+    }
+
+    // ---- lock-screen "intruder" message ----
+    /** Text shown (and spoken) when someone tries to use the locked TV. */
+    String intruderText() { return p.getString("itext", "നീ പോ മോനേ ദിനേശാ"); }
+    void intruderText(String s) { p.edit().putString("itext", s).apply(); }
+
+    /** App tile corners on the TV home screen: rounded or square. */
+    String tileStyle() { return p.getString("tiles", "rounded"); }
+    void tileStyle(String s) { p.edit().putString("tiles", s).apply(); }
+
+    /** Minutes between wallpaper changes on the home screen (0 = only when the TV wakes). */
+    int slideshow() { return p.getInt("slideshow", 10); }
+    void slideshow(int m) { p.edit().putInt("slideshow", m).apply(); }
+
     boolean perfOverlay() { return p.getBoolean("perf", false); }
     void perfOverlay(boolean on) { p.edit().putBoolean("perf", on).apply(); }
 
@@ -138,6 +166,8 @@ final class Prefs {
         String salt = hex(b);
         p.edit().putString("pinSalt", salt).putString("pinHash", hash(salt, pin)).apply();
     }
+
+    void removePin() { p.edit().remove("pinHash").remove("pinSalt").putBoolean("lock", false).apply(); }
 
     boolean checkPin(String pin) {
         String salt = p.getString("pinSalt", "");

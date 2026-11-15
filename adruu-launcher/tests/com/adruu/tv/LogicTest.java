@@ -30,13 +30,21 @@ public class LogicTest {
         check("Vishu 14 Apr -> vishu", fest(2027, 4, 14, 7).equals("vishu"));
         check("Thiruvonam day 2026 -> onam", fest(2026, 8, 26, 12).equals("onam"));
         check("9 days before Onam -> onam", fest(2026, 8, 17, 12).equals("onam"));
-        check("11 days before Onam -> none", fest(2026, 8, 15, 12).equals("none"));
+        check("14 days before Onam -> none", fest(2026, 8, 12, 12).equals("none"));
+        check("15 Aug 2026 (also before Onam) -> independence", fest(2026, 8, 15, 12).equals("independence"));
         check("2 days after Onam -> none", fest(2026, 8, 28, 12).equals("none"));
         check("Diwali 2026 -> diwali", fest(2026, 11, 8, 19).equals("diwali"));
         check("Diwali eve 2026 (late night) -> diwali", fest(2026, 11, 7, 23).equals("diwali"));
         check("3 days after Diwali -> none", fest(2026, 11, 11, 10).equals("none"));
         check("Diwali 2027 -> diwali", fest(2027, 10, 29, 19).equals("diwali"));
 
+        check("Gandhi Jayanti 2 Oct -> gandhi", fest(2026, 10, 2, 9).equals("gandhi"));
+        check("Independence Day 15 Aug -> independence", fest(2027, 8, 15, 9).equals("independence"));
+        check("Republic Day 26 Jan -> republic", fest(2027, 1, 26, 9).equals("republic"));
+        check("Pongal 14 Jan -> pongal", fest(2027, 1, 14, 9).equals("pongal"));
+        check("Holi 2027 -> holi", fest(2027, 3, 22, 9).equals("holi"));
+        check("Eid 2027 -> eid", fest(2027, 3, 10, 9).equals("eid"));
+        check("3 Oct -> none", fest(2026, 10, 3, 9).equals("none"));
         check("mode cycle auto->normal", Modes.next("auto").equals("normal"));
         check("mode cycle game->auto", Modes.next("game").equals("auto"));
         check("mode cycle unknown->auto", Modes.next("banana").equals("auto"));

@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.adruu.remote"
-    android:versionCode="2"
-    android:versionName="1.1">
+    android:versionCode="4"
+    android:versionName="2.0">
 
-    <uses-sdk android:minSdkVersion="23" android:targetSdkVersion="30" />
+    <uses-sdk android:minSdkVersion="23" android:targetSdkVersion="35" />
     <uses-permission android:name="android.permission.INTERNET" />
 
     <queries>
@@ -31,6 +31,7 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
             <!-- Share a YouTube or web link from any app straight to the TV -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />

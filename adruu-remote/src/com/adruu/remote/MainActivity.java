@@ -46,7 +46,23 @@ import java.util.concurrent.TimeUnit;
  */
 public class MainActivity extends Activity {
     private static final int PORT = 8686, PICK_FILE = 7;
-    private static final int BG = 0xFF0B0F1A, CARD = 0xFF141B2D, CARD2 = 0xFF1B2438, TEXT = 0xFFF2F5FA, DIM = 0xFF8A96AD, ACCENT = 0xFF4F8CFF;
+    // Same design tokens as the control panel (phone.html on the TV).
+    private static final int BG = 0xFF08090E, CARD = 0xFF11131B, CARD2 = 0xFF181B26, TEXT = 0xFFF4F6FB, DIM = 0xFF9AA3B8,
+            ACCENT = 0xFF6C8CFF, ACCENT2 = 0xFF9B6CFF, LINE = 0xFF262B3B;
+    private Typeface font, fontBold;
+
+    private Typeface font(boolean bold) {
+        if (font == null) {
+            try {
+                font = new Typeface.Builder(getAssets(), "font_manrope.ttf").setFontVariationSettings("'wght' 500").build();
+                fontBold = new Typeface.Builder(getAssets(), "font_manrope.ttf").setFontVariationSettings("'wght' 750").build();
+            } catch (Exception e) {
+                font = Typeface.DEFAULT;
+                fontBold = Typeface.DEFAULT_BOLD;
+            }
+        }
+        return bold ? fontBold : font;
+    }
 
     private final Handler main = new Handler(Looper.getMainLooper());
     private SharedPreferences sp;
@@ -61,8 +77,50 @@ public class MainActivity extends Activity {
         getWindow().setStatusBarColor(BG);
         getWindow().setNavigationBarColor(BG);
         sp = getSharedPreferences("remote", MODE_PRIVATE);
+        if (quickAction(getIntent())) return;
         sharedLink = linkFrom(getIntent());
         start();
+    }
+
+    /** Home-screen shortcuts: lock / unlock / TV off in one tap, without opening the panel. */
+    private boolean quickAction(Intent i) {
+        String a = i == null ? null : i.getAction();
+        final String path = "com.adruu.remote.LOCK".equals(a) ? "/api/lock"
+                : "com.adruu.remote.UNLOCK".equals(a) ? "/api/unlock"
+                : "com.adruu.remote.OFF".equals(a) ? "/api/power?state=off" : null;
+        if (path == null) return false;
+        final String label = path.contains("unlock") ? "unlocked" : path.contains("lock") ? "locked" : "turned off";
+        String token = sp.getString("token", null);
+        if (token == null) { toast("Open ADRUU Remote once to pair with the TV"); finish(); return true; }
+        new Thread(() -> {
+            boolean ok = false;
+            for (String ip : new String[]{sp.getString("ip", null), sp.getString("away", null)}) {
+                if (ip == null || ip.isEmpty()) continue;
+                String r = request("GET", "http://" + ip + ":" + PORT + path + (path.contains("?") ? "&" : "?") + "t=" + token, 4000);
+                if (r != null && r.contains("\"ok\":true")) { ok = true; break; }
+            }
+            final boolean done = ok;
+            main.post(() -> { toast(done ? "TV " + label : "Couldn't reach the TV"); finish(); });
+        }).start();
+        return true;
+    }
+
+    /** When the TV has Tailscale, remember its 100.x address so the app also works away from home. */
+    private void learnAwayAddress(String hello) {
+        try {
+            org.json.JSONArray a = new JSONObject(hello).optJSONArray("addresses");
+            if (a == null) return;
+            for (int k = 0; k < a.length(); k++) {
+                String ip = a.getString(k);
+                String[] p = ip.split("\\.");
+                // Tailscale uses the 100.64.0.0/10 range
+                if (p.length == 4 && p[0].equals("100") && Integer.parseInt(p[1]) >= 64 && Integer.parseInt(p[1]) <= 127) {
+                    if (!ip.equals(sp.getString("away", ""))) sp.edit().putString("away", ip).apply();
+                    return;
+                }
+            }
+        } catch (Exception ignored) {
+        }
     }
 
     @Override
@@ -90,7 +148,9 @@ public class MainActivity extends Activity {
         if (ip == null || token == null) { search(); return; }
         status("Connecting to your TV…", null);
         new Thread(() -> {
-            String use = hello(ip, 2500) != null ? ip : (away != null && !away.isEmpty() && hello(away, 4000) != null ? away : null);
+            String hi = hello(ip, 2500);
+            if (hi != null) learnAwayAddress(hi);
+            String use = hi != null ? ip : (away != null && !away.isEmpty() && hello(away, 4000) != null ? away : null);
             main.post(() -> { if (use != null) openPanel(use, token); else lost(ip); });
         }).start();
     }
@@ -108,6 +168,27 @@ public class MainActivity extends Activity {
         @android.webkit.JavascriptInterface public void update(String url) {
             main.post(() -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url))));
         }
+        /** Opens an app's Play Store page on this phone (Tailscale, ntfy…). */
+        @android.webkit.JavascriptInterface public void openStore(String pkg) {
+            main.post(() -> {
+                try {
+                    startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + pkg)));
+                } catch (Exception e) {
+                    startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=" + pkg)));
+                }
+            });
+        }
+        /** Opens a link in the app that handles it (e.g. ntfy:// subscription links). */
+        @android.webkit.JavascriptInterface public void openUrl(String url) {
+            main.post(() -> {
+                try {
+                    startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+                } catch (Exception e) {
+                    toast("Install the app for this link first");
+                }
+            });
+        }
+        @android.webkit.JavascriptInterface public String awayAddress() { return sp.getString("away", ""); }
     }
 
     private static final int VOICE = 8;
@@ -142,6 +223,7 @@ public class MainActivity extends Activity {
         help.setText("To control the TV from anywhere: install Tailscale on the TV and on this phone, sign in to the same account on both, and type the TV's Tailscale address here.");
         help.setPadding(0, dp(8), 0, 0);
         box.addView(help);
+        box.addView(button("Get Tailscale on this phone", true, v -> new Bridge().openStore("com.tailscale.ipn")));
         new android.app.AlertDialog.Builder(this).setTitle("Connection").setView(box)
                 .setPositiveButton("Save", (d, w) -> {
                     sp.edit().putString("ip", home.getText().toString().trim()).putString("away", away.getText().toString().trim()).apply();
@@ -172,14 +254,33 @@ public class MainActivity extends Activity {
         web.setWebChromeClient(new WebChromeClient() {
             @Override
             public boolean onShowFileChooser(WebView w, ValueCallback<Uri[]> cb, FileChooserParams params) {
-                fileCb = cb;   // "Install an app (APK)" on the panel
-                Intent pick = new Intent(Intent.ACTION_GET_CONTENT).setType("*/*").addCategory(Intent.CATEGORY_OPENABLE);
-                startActivityForResult(Intent.createChooser(pick, "Choose an APK"), PICK_FILE);
+                if (fileCb != null) fileCb.onReceiveValue(null);
+                fileCb = cb;
+                String[] types = params.getAcceptTypes();
+                String type = types != null && types.length > 0 && !types[0].isEmpty() ? types[0] : "*/*";
+                if (params.isCaptureEnabled() && type.startsWith("audio")) {
+                    // "Record" on the lock-screen voice: the phone's own sound recorder.
+                    try {
+                        startActivityForResult(new Intent(android.provider.MediaStore.Audio.Media.RECORD_SOUND_ACTION), PICK_FILE);
+                        return true;
+                    } catch (Exception noRecorder) {
+                        toast("No voice recorder app found: choose a recording instead");
+                    }
+                }
+                Intent pick = new Intent(Intent.ACTION_GET_CONTENT).setType(type.contains("apk") ? "*/*" : type)
+                        .addCategory(Intent.CATEGORY_OPENABLE)
+                        .putExtra(Intent.EXTRA_ALLOW_MULTIPLE, params.getMode() == FileChooserParams.MODE_OPEN_MULTIPLE);
+                startActivityForResult(Intent.createChooser(pick, "Choose a file"), PICK_FILE);
                 return true;
             }
         });
         web.loadUrl("http://" + ip + ":" + PORT + "/?t=" + token);
-        setContentView(web);
+        // Android 15 draws apps edge to edge: keep the panel clear of the status and navigation bars.
+        android.widget.FrameLayout frame = new android.widget.FrameLayout(this);
+        frame.setBackgroundColor(BG);
+        frame.setFitsSystemWindows(true);
+        frame.addView(web);
+        setContentView(frame);
         if (sharedLink != null) sendLink();
     }
 
@@ -252,6 +353,7 @@ public class MainActivity extends Activity {
             main.post(() -> {
                 if (t == null) { toast("Wrong or expired code. Try again."); pair(ip); return; }
                 sp.edit().putString("ip", ip).putString("token", t).apply();
+                new Thread(() -> { String hi = hello(ip, 3000); if (hi != null) learnAwayAddress(hi); }).start();
                 toast("Paired with your TV");
                 openPanel(ip, t);
             });
@@ -342,22 +444,27 @@ public class MainActivity extends Activity {
     private LinearLayout base(String title) {
         web = null;
         ScrollView sv = new ScrollView(this);
-        sv.setBackgroundColor(BG);
+        // Soft violet/blue glow behind the screen, like the control panel's hero card.
+        GradientDrawable glow = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{0xFF1A1636, BG, BG, 0xFF0F1830});
+        sv.setBackground(glow);
         sv.setFillViewport(true);
+        sv.setFitsSystemWindows(true);
         page = new LinearLayout(this);
         page.setOrientation(LinearLayout.VERTICAL);
-        int pd = dp(20);
-        page.setPadding(pd, dp(40), pd, pd);
-        TextView logo = text("ADRUU", 26, ACCENT, true);
-        logo.setLetterSpacing(0.3f);
+        int pd = dp(24);
+        page.setPadding(pd, dp(36), pd, pd);
+        TextView logo = text("ADRUU", 24, ACCENT, true);
+        logo.setLetterSpacing(0.32f);
+        logo.getPaint().setShader(new android.graphics.LinearGradient(0, 0, dp(140), 0, ACCENT, ACCENT2, android.graphics.Shader.TileMode.CLAMP));
         page.addView(logo);
-        page.addView(text("Remote", 14, DIM, false));
+        page.addView(text("Remote for your TV", 14, DIM, false));
         if (title != null) {
-            TextView t = text(title, 22, TEXT, true);
-            t.setPadding(0, dp(24), 0, dp(8));
+            TextView t = text(title, 30, TEXT, true);
+            t.setLetterSpacing(-0.02f);
+            t.setPadding(0, dp(48), 0, dp(6));
             page.addView(t);
         } else {
-            page.addView(new View(this), new LinearLayout.LayoutParams(1, dp(40)));
+            page.addView(new View(this), new LinearLayout.LayoutParams(1, dp(80)));
         }
         sv.addView(page);
         setContentView(sv);
@@ -369,7 +476,8 @@ public class MainActivity extends Activity {
         v.setText(s);
         v.setTextSize(sp);
         v.setTextColor(color);
-        v.setTypeface(Typeface.create("sans-serif", bold ? Typeface.BOLD : Typeface.NORMAL));
+        v.setTypeface(font(bold));
+        v.setLineSpacing(0, 1.15f);
         v.setPadding(0, dp(6), 0, dp(6));
         return v;
     }
@@ -380,12 +488,20 @@ public class MainActivity extends Activity {
         b.setAllCaps(false);
         b.setTextSize(16);
         b.setTextColor(primary ? Color.WHITE : TEXT);
-        GradientDrawable g = new GradientDrawable();
-        g.setColor(primary ? ACCENT : CARD2);
-        g.setCornerRadius(dp(14));
-        b.setBackground(g);
+        b.setTypeface(font(true));
+        b.setStateListAnimator(null);
+        GradientDrawable g = primary
+                ? new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, new int[]{ACCENT, ACCENT2})
+                : new GradientDrawable();
+        if (!primary) {
+            g.setColor(CARD);
+            g.setStroke(dp(1), LINE);
+        }
+        g.setCornerRadius(dp(18));
+        b.setBackground(new android.graphics.drawable.RippleDrawable(
+                android.content.res.ColorStateList.valueOf(0x33FFFFFF), g, null));
         b.setOnClickListener(l);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(54));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(58));
         lp.topMargin = dp(12);
         b.setLayoutParams(lp);
         return b;
@@ -404,7 +520,16 @@ public class MainActivity extends Activity {
             return;
         }
         if (req == PICK_FILE && fileCb != null) {
-            fileCb.onReceiveValue(res == RESULT_OK && data != null && data.getData() != null ? new Uri[]{data.getData()} : null);
+            Uri[] picked = null;
+            if (res == RESULT_OK && data != null) {
+                if (data.getClipData() != null) {   // several photos at once
+                    picked = new Uri[data.getClipData().getItemCount()];
+                    for (int i = 0; i < picked.length; i++) picked[i] = data.getClipData().getItemAt(i).getUri();
+                } else if (data.getData() != null) {
+                    picked = new Uri[]{data.getData()};
+                }
+            }
+            fileCb.onReceiveValue(picked);
             fileCb = null;
         }
     }

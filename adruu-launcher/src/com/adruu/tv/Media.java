@@ -25,7 +25,7 @@ import java.io.OutputStream;
  */
 final class Media {
     static final int MAX_PHOTO_MB = 25;
-    static final int MAX_INTRO_MB = 100;
+    static final int MAX_INTRO_MB = 200;
 
     private Media() {}
 
@@ -37,6 +37,44 @@ final class Media {
     }
 
     static File introFile(Context c) { return new File(c.getFilesDir(), "intro.mp4"); }
+
+    /** Album names are folder names: letters, digits, spaces, - and _ only. */
+    static String cleanAlbum(String a) {
+        if (a == null) return "My photos";
+        a = a.replaceAll("[^A-Za-z0-9 _-]", "").trim();
+        if (a.length() > 30) a = a.substring(0, 30);
+        return a.isEmpty() ? "My photos" : a;
+    }
+
+    static File albumDir(Context c, String album) {
+        File d = new File(wallDir(c), cleanAlbum(album));
+        if (!d.exists()) //noinspection ResultOfMethodCallIgnored
+            d.mkdirs();
+        return d;
+    }
+
+    static JSONArray albums(Context c) throws Exception {
+        JSONArray a = new JSONArray();
+        File[] ds = wallDir(c).listFiles();
+        if (ds != null) for (File d : ds) if (d.isDirectory()) {
+            File[] fs = d.listFiles();
+            a.put(new JSONObject().put("name", d.getName()).put("count", fs == null ? 0 : fs.length));
+        }
+        return a;
+    }
+
+    /** All photo files in one album, or in every album when album is null. */
+    static java.util.List<File> photos(Context c, String album) {
+        java.util.List<File> out = new java.util.ArrayList<>();
+        File[] ds = album == null ? wallDir(c).listFiles() : new File[]{new File(wallDir(c), cleanAlbum(album))};
+        if (ds == null) return out;
+        for (File d : ds) {
+            if (d.isFile()) { out.add(d); continue; }   // photos saved before albums existed
+            File[] fs = d.listFiles();
+            if (fs != null) for (File f : fs) if (f.isFile()) out.add(f);
+        }
+        return out;
+    }
 
     /** Streams an upload to a temp file (never the whole thing in RAM: the TV only has 2 GB). */
     static File receive(Context c, InputStream in, int len, String name) throws Exception {
@@ -55,7 +93,7 @@ final class Media {
     }
 
     /** Decodes a phone photo at a safe size, crops it to 16:9, saves 1920x1080 JPEG. Returns the file name. */
-    static String saveWallpaper(Context c, File src) throws Exception {
+    static String saveWallpaper(Context c, File src, String album) throws Exception {
         BitmapFactory.Options probe = new BitmapFactory.Options();
         probe.inJustDecodeBounds = true;
         BitmapFactory.decodeFile(src.getPath(), probe);
@@ -74,7 +112,7 @@ final class Media {
         new Canvas(out).drawBitmap(b, from, new Rect(0, 0, 1920, 1080), new Paint(Paint.FILTER_BITMAP_FLAG));
         b.recycle();
         String name = "my-" + System.currentTimeMillis() + ".jpg";
-        try (OutputStream os = new FileOutputStream(new File(wallDir(c), name))) {
+        try (OutputStream os = new FileOutputStream(new File(albumDir(c, album), name))) {
             out.compress(Bitmap.CompressFormat.JPEG, 88, os);
         }
         out.recycle();
@@ -85,14 +123,21 @@ final class Media {
 
     static JSONArray listWallpapers(Context c) throws Exception {
         JSONArray a = new JSONArray();
-        File[] fs = wallDir(c).listFiles();
-        if (fs != null) for (File f : fs) a.put(new JSONObject().put("name", f.getName()).put("kb", f.length() / 1024));
+        for (File f : photos(c, null)) {
+            String album = f.getParentFile().equals(wallDir(c)) ? "" : f.getParentFile().getName();
+            a.put(new JSONObject().put("album", album).put("name", f.getName()).put("kb", f.length() / 1024));
+        }
         return a;
     }
 
-    static boolean deleteWallpaper(Context c, String name) {
-        if (name == null || name.contains("/") || name.contains("..")) return false;
-        return new File(wallDir(c), name).delete();
+    static boolean deleteWallpaper(Context c, String album, String name) {
+        if (name == null || name.contains("/") || name.contains("\\") || name.contains("..")) return false;
+        File dir = album == null || album.isEmpty() ? wallDir(c) : new File(wallDir(c), cleanAlbum(album));
+        boolean ok = new File(dir, name).delete();
+        String[] left = dir.list();
+        if (ok && !dir.equals(wallDir(c)) && left != null && left.length == 0) //noinspection ResultOfMethodCallIgnored
+            dir.delete();
+        return ok;
     }
 
     /**

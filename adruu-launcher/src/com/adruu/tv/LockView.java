@@ -26,6 +26,22 @@ final class LockView extends LinearLayout {
     private final TextView status;
     private final Handler h = new Handler(Looper.getMainLooper());
     private TextView first;
+    private TextView title;
+    private GridLayout pad;
+    private LinearLayout dotRow;
+
+    /**
+     * Locked from the phone with no PIN set: no keypad, only the phone can unlock.
+     * With a PIN, the keypad stays so the PIN also works.
+     */
+    void phoneMode(boolean phoneOnly) {
+        title.setText(phoneOnly ? "Locked from phone\nUnlock it from the ADRUU Remote app" : "Enter PIN to unlock");
+        title.setGravity(Gravity.CENTER);
+        int vis = phoneOnly ? GONE : VISIBLE;
+        pad.setVisibility(vis);
+        dotRow.setVisibility(vis);
+        status.setVisibility(vis);
+    }
 
     LockView(Context c, Prefs prefs, Theme theme, Listener l) {
         super(c);
@@ -40,11 +56,12 @@ final class LockView extends LinearLayout {
         TextView logo = UI.text(c, "ADRUU", 30, t.accent, true);
         logo.setLetterSpacing(0.3f);
         addView(logo);
-        TextView title = UI.text(c, "Enter PIN to unlock", 18, t.text, false);
+        title = UI.text(c, "Enter PIN to unlock", 18, t.text, false);
         title.setPadding(0, UI.dp(c, 14), 0, UI.dp(c, 22));
         addView(title);
 
         LinearLayout row = new LinearLayout(c);
+        dotRow = row;
         row.setGravity(Gravity.CENTER);
         for (int i = 0; i < LEN; i++) {
             View d = new View(c);
@@ -60,7 +77,7 @@ final class LockView extends LinearLayout {
         status.setPadding(0, UI.dp(c, 16), 0, UI.dp(c, 18));
         addView(status);
 
-        GridLayout pad = new GridLayout(c);
+        pad = new GridLayout(c);
         pad.setColumnCount(3);
         String[] keys = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "Clear", "0", "⌫"};
         for (String k : keys) {
@@ -116,6 +133,9 @@ final class LockView extends LinearLayout {
         }
         int f = p.fails() + 1;
         p.addEvent(f >= MAX_FAILS ? "Too many wrong PINs on the TV - locked for 1 minute" : "Wrong PIN entered on the TV");
+        Notify.send(getContext(), "Wrong PIN", "Someone typed a wrong PIN on the TV (" + f + " of " + MAX_FAILS + ")", "warning");
+        if (getParent() instanceof android.widget.FrameLayout)
+            Intruder.show((android.widget.FrameLayout) getParent(), t, p);
         if (f >= MAX_FAILS) {
             p.fails(0);
             p.lockoutUntil(System.currentTimeMillis() + LOCKOUT_MS);
