@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Key filtering is NOT switched on here: MouseService turns it on only while the pointer is showing.
+  With it always on, Android routes every remote key press through ADRUU first, which made
+  YouTube and other apps feel laggy on this TV.
+-->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeAnnouncement"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:canPerformGestures="true"
+    android:canRequestFilterKeyEvents="true"
+    android:description="@string/mouse_desc"
+    android:notificationTimeout="1000" />

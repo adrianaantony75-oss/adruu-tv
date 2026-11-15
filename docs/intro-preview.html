@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADRUU intro preview</title>
+<style>
+  :root { --bg:#0B0F1A; --text:#F2F5FA; --dim:#8A96AD; --accent:#4F8CFF; }
+  html,body { margin:0; height:100%; background:#000; color:var(--text); font-family:system-ui,sans-serif; }
+  .wrap { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100%; gap:14px; padding:16px; box-sizing:border-box; }
+  .screen { position:relative; width:min(100%, calc((100vh - 120px) * 16 / 9)); aspect-ratio:16/9; border-radius:10px; overflow:hidden; box-shadow:0 0 0 6px #111, 0 0 0 7px #333; }
+  canvas { width:100%; height:100%; display:block; }
+  .overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(11,15,26,.7); }
+  button { font:600 17px system-ui,sans-serif; color:#fff; background:var(--accent); border:0; border-radius:12px; padding:14px 26px; cursor:pointer; }
+  .bar { display:flex; gap:10px; align-items:center; color:var(--dim); font-size:14px; flex-wrap:wrap; justify-content:center; }
+  .bar button { font-size:14px; padding:9px 16px; background:#1B2438; }
+  select { font:14px system-ui; background:#1B2438; color:#fff; border:0; border-radius:8px; padding:8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="screen">
+    <canvas id="c"></canvas>
+    <div class="overlay" id="ov"><button id="play">Play intro with sound</button></div>
+  </div>
+  <div class="bar">
+    <button id="replay">Replay</button>
+    <label>Theme <select id="theme"></select></label>
+    <span>Preview of the ADRUU TV startup animation</span>
+  </div>
+</div>
+<script>
+const THEMES = {
+  midnight:{name:"Midnight", bg:"#0B0F1A", bg2:"#141B2D", surface:"#1B2438", accent:"#4F8CFF", text:"#F2F5FA", dim:"#8A96AD"},
+  neon:{name:"Neon", bg:"#07050F", bg2:"#170A2B", surface:"#1E1236", accent:"#FF2BD6", text:"#F7EFFF", dim:"#9C8BB8"},
+  racing:{name:"Racing red", bg:"#0E0B0B", bg2:"#1F1313", surface:"#2A1A1A", accent:"#FF3B30", text:"#FFF4F2", dim:"#A89290"},
+  ocean:{name:"Ocean", bg:"#04161A", bg2:"#0A2C33", surface:"#0F3740", accent:"#2EE6C5", text:"#EFFFFC", dim:"#86A9A5"},
+  minimal:{name:"Minimal light", bg:"#F4F4F2", bg2:"#E6E6E1", surface:"#FFFFFF", accent:"#1F6FEB", text:"#15171A", dim:"#6B7078"},
+  christmas:{name:"Christmas (festival)", bg:"#0B1A12", bg2:"#240C0C", surface:"#1F2E24", accent:"#E63946", text:"#F4FFF7", dim:"#95AD9E"},
+  onam:{name:"Onam (festival)", bg:"#0F1A07", bg2:"#2A2405", surface:"#26320F", accent:"#FFC233", text:"#FFF8E6", dim:"#B5AE8C"},
+};
+const sel = document.getElementById('theme');
+for (const k in THEMES) { const o = document.createElement('option'); o.value = k; o.textContent = THEMES[k].name; sel.appendChild(o); }
+let T = THEMES.midnight;
+sel.onchange = () => { T = THEMES[sel.value]; };
+
+const DESCENT=2.0, ROLL=2.8, DOOR=3.1, APPEAR=3.3, STAIRS=3.9, WALK=4.8, END=5.9, ROLL_TIME=ROLL-DESCENT;
+const NAVY="#1C2B4D", GOLD="#F2C14E", SHIRT="#F5F7FA", SHOE="#0A0A0A", HULL="#E9EEF5", ENGINE="#B7C0CC", WINDOW="#2A3445";
+const clamp=x=>Math.max(0,Math.min(1,x)), lerp=(a,b,k)=>a+(b-a)*k, easeOut=x=>1-(1-x)*(1-x), smooth=x=>x*x*(3-2*x);
+
+const fuselage=new Path2D("M30 -18 L350 -18 C380 -18 402 -10 402 0 C402 8 385 18 350 18 L30 18 L8 4 L0 -12 L10 -18 Z");
+const fin=new Path2D("M10 -18 L58 -18 L26 -64 L8 -64 Z");
+const wing=new Path2D("M150 6 L236 6 L200 21 L128 21 Z");
+const cockpit=new Path2D("M366 -12 L386 -10 L394 -3 L369 -3 Z");
+const jacket=new Path2D("M-11 -76 L11 -76 L9 -38 L-9 -38 Z");
+const collar=new Path2D("M-4.5 -76 L4.5 -76 L0 -63 Z");
+
+const cv=document.getElementById('c'), c=cv.getContext('2d');
+function resize(){ const r=cv.getBoundingClientRect(), d=devicePixelRatio||1; cv.width=r.width*d; cv.height=r.height*d; }
+addEventListener('resize', resize); resize();
+
+function rr(x0,y0,x1,y1,rad){ c.beginPath(); c.roundRect(x0,y0,x1-x0,y1-y0,rad); c.fill(); }
+function line(x0,y0,x1,y1){ c.beginPath(); c.moveTo(x0,y0); c.lineTo(x1,y1); c.stroke(); }
+function dot(x,y,r){ c.beginPath(); c.arc(x,y,r,0,Math.PI*2); c.fill(); }
+
+function scenery(w,h,g){
+  c.globalAlpha=1; c.fillStyle=T.surface;
+  c.fillRect(w*.095,g-h*.22,w*.015,h*.22);
+  rr(w*.083,g-h*.27,w*.122,g-h*.22,6);
+  c.fillStyle=T.accent; c.globalAlpha=150/255; c.fillRect(w*.087,g-h*.255,w*.031,h*.02);
+  c.globalAlpha=1; c.fillStyle=T.surface; c.fillRect(0,g-2,w,h*.20+2);
+  c.fillStyle=T.dim; c.globalAlpha=110/255; const dy=g+h*.095;
+  for(let x=0;x<w;x+=w*.07) c.fillRect(x,dy-3,w*.04,6);
+  c.fillStyle=T.accent; c.globalAlpha=200/255;
+  for(let x=w*.02;x<w;x+=w*.06){ dot(x,g+2,3.5); dot(x,g+h*.20-3,4.5); }
+  c.globalAlpha=1;
+}
+
+function plane(x,y,u,angle,doorK){
+  c.save(); c.translate(x,y); c.scale(u,u);
+  c.translate(190,48); c.rotate(angle*Math.PI/180); c.translate(-190,-48);
+  c.fillStyle=T.accent; c.fill(fin); c.fillRect(0,-9,44,5);
+  c.fillStyle=HULL; c.fill(fuselage);
+  c.fillStyle=T.accent; c.fillRect(40,4,322,3);
+  c.fillStyle=WINDOW; for(let wx=90;wx<=318;wx+=14) dot(wx,-6,3); c.fill(cockpit);
+  if(doorK>0){ c.globalAlpha=doorK; c.fillStyle=WINDOW; rr(326,-13,344,13,3); c.globalAlpha=1; }
+  c.strokeStyle=ENGINE; c.lineWidth=1.2; c.beginPath(); c.roundRect(326,-13,18,26,3); c.stroke();
+  c.fillStyle=ENGINE; c.fill(wing); rr(174,16,222,31,7);
+  c.fillStyle=WINDOW; c.fillRect(190,18,4,22); c.fillRect(353,18,4,22);
+  c.fillStyle=SHOE; dot(192,41,7); dot(355,41,7);
+  c.restore();
+}
+
+function stairs(tx,ty,bx,by,u){
+  c.strokeStyle=T.dim; c.lineCap='round'; c.lineWidth=3.2*u;
+  line(tx,ty,bx,by); line(tx,ty-9*u,bx,by-9*u);
+  c.lineWidth=1.4*u;
+  for(let i=1;i<6;i++){ const k=i/6, sx=lerp(tx,bx,k), sy=lerp(ty,by,k); line(sx,sy,sx,sy-9*u); }
+}
+
+function pilot(x,y,scale,phase,walking,face,wave,alpha){
+  c.save(); c.translate(x,y); c.scale(scale,scale); c.globalAlpha=alpha; c.lineCap='round';
+  const swing=walking?Math.sin(phase)*.45:0;
+  let lx1=Math.sin(swing)*40, ly1=-40+Math.cos(swing)*40, lx2=Math.sin(-swing)*40, ly2=-40+Math.cos(-swing)*40;
+  if(face===0){ lx1=-6; lx2=6; ly1=ly2=0; }
+  c.strokeStyle=NAVY; c.lineWidth=6.5; line(face===0?-4:0,-40,lx1,ly1); line(face===0?4:0,-40,lx2,ly2);
+  c.strokeStyle=SHOE; c.lineWidth=5.5; const toe=face===0?0:face*7;
+  line(lx1,ly1,lx1+toe+(face===0?-4:0),ly1); line(lx2,ly2,lx2+toe+(face===0?4:0),ly2);
+  const arm=-swing*.8; let ax1=-11+Math.sin(arm)*28, ay1=-74+Math.cos(arm)*28, ax2, ay2;
+  if(wave>=0){ ax2=11+Math.sin(wave)*28; ay2=-74-Math.cos(wave)*28; ax1=-14; ay1=-46; }
+  else { ax2=11+Math.sin(-arm)*28; ay2=-74+Math.cos(-arm)*28; }
+  c.strokeStyle=NAVY; c.lineWidth=5.5; line(-11,-74,ax1,ay1); line(11,-74,ax2,ay2);
+  c.fillStyle=GOLD; dot(lerp(-11,ax1,.85),lerp(-74,ay1,.85),1.2); dot(lerp(11,ax2,.85),lerp(-74,ay2,.85),1.2);
+  c.fillStyle=NAVY; c.fill(jacket);
+  c.fillStyle=SHIRT; c.fill(collar);
+  c.fillStyle=T.accent; c.fillRect(-1.6,-72,3.2,16);
+  c.fillStyle=GOLD; dot(-5,-50,1.4); dot(-5,-44,1.4); c.fillRect(-11,-77,6,2); c.fillRect(5,-77,6,2);
+  c.fillStyle=T.text; dot(ax1,ay1,2.8); dot(ax2,ay2,2.8); c.fillRect(-2,-80,4,5); dot(0,-88,9);
+  c.fillStyle=NAVY; rr(-10.5,-102,10.5,-95,3);
+  c.fillStyle=SHOE; c.fillRect(-10.5,-96,21,1.5);
+  if(face===0) c.fillRect(-12,-94.5,24,1.5); else c.fillRect(face<0?-15:0,-95,15,2);
+  c.fillStyle=GOLD; dot(0,-98.5,2);
+  c.restore(); c.globalAlpha=1;
+}
+
+let start=null, raf=0;
+function frame(now){
+  const w=cv.width, h=cv.height, s=start===null?0:(now-start)/1000;
+  const grad=c.createLinearGradient(0,0,w,h); grad.addColorStop(0,T.bg); grad.addColorStop(1,T.bg2);
+  c.globalAlpha=1; c.fillStyle=grad; c.fillRect(0,0,w,h);
+  const g=h*.66, u=w*.42/402;
+  scenery(w,h,g);
+  const yG=g-48*u, stopX=w*.60-335*u, x0=-402*u, y0=g-h*.47;
+  const v=(stopX-x0)/(DESCENT+ROLL_TIME/2), touchX=stopX-v*ROLL_TIME/2;
+  let px,py,ang;
+  if(s<DESCENT){ const k=s/DESCENT; px=lerp(x0,touchX,k); py=lerp(y0,yG,1-Math.pow(1-k,1.6)); ang=k<.8?-3:lerp(-3,-7,(k-.8)/.2); }
+  else { const k=clamp((s-DESCENT)/ROLL_TIME); px=touchX+(stopX-touchX)*easeOut(k); py=yG; ang=lerp(-7,0,smooth(clamp((s-DESCENT)/.35))); }
+  plane(px,py,u,ang,clamp((s-ROLL)/(DOOR-ROLL)));
+  const dLX=stopX+326*u, dBY=yG+13*u, sBX=dLX-46*u;
+  if(s>=ROLL){ const k=smooth(clamp((s-ROLL)/(DOOR-ROLL+.15))); stairs(dLX,dBY,lerp(dLX,sBX,k),lerp(dBY,g,k),u); }
+  const ps0=u*.30, ps1=h*.30/100, standY=g+h*.14;
+  if(s>=DOOR){
+    let fx,fy,sc,walking=true,face=-1,alpha=1; const phase=s*7;
+    if(s<APPEAR){ fx=stopX+335*u; fy=dBY; sc=ps0; walking=false; alpha=clamp((s-DOOR)/(APPEAR-DOOR)); }
+    else if(s<STAIRS){ const k=(s-APPEAR)/(STAIRS-APPEAR); fx=lerp(stopX+335*u,sBX,k); fy=lerp(dBY,g,k); sc=ps0; }
+    else if(s<WALK){ const k=smooth((s-STAIRS)/(WALK-STAIRS)); fx=lerp(sBX,w/2,k); fy=lerp(g,standY,k); sc=lerp(ps0,ps1,k*k); if(k>.85) face=0; }
+    else { fx=w/2; fy=standY; sc=ps1; walking=false; face=0; }
+    if(s>=STAIRS){ c.fillStyle=T.bg; c.globalAlpha=(120/255)*smooth(clamp((s-STAIRS)/(WALK-STAIRS))); c.fillRect(0,0,w,h); c.globalAlpha=1; }
+    const wave=s>=WALK?.55+.35*Math.sin((s-WALK)*9):-1;
+    pilot(fx,fy,sc,phase,walking,face,wave,alpha);
+  }
+  const tk=clamp((s-WALK)/.5);
+  if(tk>0){
+    const size=h*.075, ty=standY+size*1.35;
+    c.globalAlpha=tk; c.fillStyle=T.text; c.textAlign='center';
+    c.font=`bold ${size*(.9+.1*easeOut(tk))}px sans-serif`;
+    c.letterSpacing=`${size*.35}px`;
+    c.fillText("ADRUU", w/2+size*.17, ty);
+    c.letterSpacing='0px';
+    c.fillStyle=T.accent; const lw=w*.09*easeOut(tk);
+    c.fillRect(w/2-lw, ty+size*.28, lw*2, 5*(devicePixelRatio||1));
+    c.globalAlpha=1;
+  }
+  if(start!==null && s<END+1.2) raf=requestAnimationFrame(frame);
+}
+
+// ---- sound (same recipe as Synth.makeLanding on the TV) ----
+let actx=null;
+function landingBuffer(){
+  const RATE=22050, n=RATE*6, buf=actx.createBuffer(1,n,RATE), d=buf.getChannelData(0);
+  let seed=11; const rnd=()=>{ seed=(seed*1103515245+12345)&0x7fffffff; return seed/0x7fffffff; };
+  let lp=0, lp2=0, wh=0;
+  const chime=(t,f)=>{ if(t<0) return 0; const e=Math.exp(-t*3.2)*Math.min(1,t/.01); return (Math.sin(2*Math.PI*f*t)+.2*Math.sin(4*Math.PI*f*t))*e*.32; };
+  for(let i=0;i<n;i++){
+    const t=i/RATE;
+    const roar=t<2?.30+.10*t/2:t<2.8?.62:Math.max(0,.62*(1-(t-2.8)/.9));
+    const cut=t<2.8?.10:Math.max(.03,.10-(t-2.8)*.08);
+    lp+=cut*((rnd()*2-1)-lp); lp2+=.25*(lp-lp2);
+    let v=lp2*roar*3.2;
+    const wf=t<2.8?1450-120*t:Math.max(500,1114-(t-2.8)*600), wa=t<2.8?.07:Math.max(0,.07*(1-(t-2.8)/.9));
+    wh+=wf/RATE; v+=Math.sin(2*Math.PI*wh)*wa;
+    if(t>=2){ const q=t-2; v+=Math.sin(2*Math.PI*52*q)*Math.exp(-q*11)*.85; if(q<.12) v+=(rnd()*2-1)*Math.exp(-q*40)*.35; }
+    v+=chime(t-4.8,880)+chime(t-5.05,659);
+    d[i]=Math.tanh(v*1.4)*Math.min(1,t/.6)*(16000/32768);
+  }
+  return buf;
+}
+function play(){
+  document.getElementById('ov').style.display='none';
+  try {
+    actx = actx || new (window.AudioContext||window.webkitAudioContext)();
+    const src=actx.createBufferSource(); src.buffer=landingBuffer(); src.connect(actx.destination); src.start();
+  } catch(e) {}
+  cancelAnimationFrame(raf); start=performance.now(); raf=requestAnimationFrame(frame);
+}
+document.getElementById('play').onclick=play;
+document.getElementById('replay').onclick=play;
+frame(performance.now());
+</script>
+</body>
+</html>

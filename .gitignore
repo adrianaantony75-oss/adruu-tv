@@ -1,0 +1,20 @@
+# Build output
+build/
+*.apk
+*.dex
+*.class
+
+# Signing keys and passwords: NEVER commit (kept in %LOCALAPPDATA%\ADRUU-tools\keys)
+keystore/
+*.jks
+*.keystore
+password.txt
+
+# Generated at build time (the phone app bundled into the TV app)
+adruu-launcher/assets/remote.apk
+adruu-launcher/assets/remote-version.txt
+
+# Local tools / editor
+.claude/
+*.log
+*.idsig

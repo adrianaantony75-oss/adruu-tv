@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="mouse_label">ADRUU mouse pointer</string>
+    <string name="mouse_desc">Lets ADRUU show a mouse pointer you move with the remote\'s arrow keys. It only reacts to the remote while mouse mode is on.</string>
+</resources>

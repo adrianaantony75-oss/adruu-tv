@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0B0F1A">
+<title>ADRUU remote</title>
+<style>
+  :root { --bg:#0B0F1A; --card:#141B2D; --card2:#1B2438; --text:#F2F5FA; --dim:#8A96AD; --accent:#4F8CFF; --bad:#FF5A5F; --good:#3DDC97; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.4 system-ui,-apple-system,sans-serif; padding:16px 16px 48px; }
+  h1 { font-size:22px; letter-spacing:.3em; color:var(--accent); margin:6px 0 2px; }
+  .sub { color:var(--dim); font-size:13px; margin-bottom:16px; }
+  .card { background:var(--card); border-radius:16px; padding:16px; margin-bottom:14px; }
+  .card h2 { font-size:15px; font-weight:600; color:var(--text); margin:0 0 12px; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; }
+  .row + .row { margin-top:10px; }
+  button { flex:1 1 auto; min-height:48px; border:0; border-radius:12px; background:var(--card2); color:var(--text); font:600 15px system-ui,sans-serif; padding:10px 14px; cursor:pointer; }
+  button.on, button.primary { background:var(--accent); color:#fff; }
+  button.danger { background:#3A1D24; color:#FFB3B6; }
+  button.sq { flex:0 0 56px; }
+  input[type=url], input[type=text], textarea, select { width:100%; min-height:48px; border-radius:12px; border:1px solid #2A3550; background:var(--card2); color:var(--text); padding:10px 12px; font-size:16px; font-family:inherit; }
+  textarea { min-height:110px; resize:vertical; }
+  input[type=file] { color:var(--dim); font-size:14px; max-width:100%; }
+  label.chk { display:flex; gap:8px; align-items:center; color:var(--dim); font-size:14px; margin-top:8px; }
+  .status { display:flex; align-items:center; gap:10px; font-weight:600; }
+  .dot { width:12px; height:12px; border-radius:50%; background:var(--good); flex:none; }
+  .dot.locked { background:var(--bad); }
+  .list { font-size:14px; color:var(--dim); }
+  .list div { display:flex; justify-content:space-between; gap:8px; padding:7px 0; border-bottom:1px solid #1F2840; align-items:center; }
+  .list div:last-child { border-bottom:0; }
+  .alert { background:#3A1D24; color:#FFD3D5; border-radius:12px; padding:10px 12px; margin-bottom:8px; font-size:14px; }
+  .note { font-size:13px; color:var(--dim); margin-top:10px; }
+  #pad { height:220px; border-radius:14px; background:var(--card2); border:1px dashed #33405F; display:flex; align-items:center; justify-content:center; color:var(--dim); font-size:14px; touch-action:none; user-select:none; }
+  #toast { position:fixed; left:16px; right:16px; bottom:16px; background:var(--accent); color:#fff; padding:12px 16px; border-radius:12px; font-weight:600; display:none; text-align:center; z-index:9; }
+  .mini { font-size:13px; padding:6px 10px; min-height:34px; flex:0 0 auto; }
+</style>
+</head>
+<body>
+<h1>ADRUU</h1>
+<div class="sub" id="ver">Your TV remote</div>
+<div id="update"></div>
+<div id="alerts"></div>
+
+<div class="card">
+  <h2>TV lock</h2>
+  <div class="status"><span class="dot" id="lockDot"></span><span id="lockText">Checking…</span></div>
+  <div class="row" style="margin-top:12px">
+    <button id="unlockBtn">Unlock TV</button>
+    <button class="danger" id="lockBtn">Lock TV</button>
+  </div>
+  <div class="note" id="lockHelp">Lock TV shows a 6-digit PIN screen on the TV. It only works after a PIN is set in ADRUU settings on the TV.</div>
+</div>
+
+<div class="card">
+  <h2>Power</h2>
+  <div class="row"><button id="pwrOn">Turn TV on</button><button class="danger" id="pwrOff">Turn TV off</button></div>
+  <div class="note">"On" works while the TV is on standby and still connected to Wi-Fi.</div>
+</div>
+
+<div class="card">
+  <h2>Remote</h2>
+  <div class="row"><button data-k="back">Back</button><button data-k="home">Home</button><button data-k="playpause">Play / Pause</button></div>
+  <div class="row"><button data-k="prev">Prev</button><button data-k="voldown">Vol −</button><button data-k="mute">Mute</button><button data-k="volup">Vol +</button><button data-k="next">Next</button></div>
+  <div class="note">Volume also controls the Sony soundbar.</div>
+</div>
+
+<div class="card">
+  <h2>Mouse and scroll</h2>
+  <div id="pad">Drag here to move the pointer · tap to click</div>
+  <div class="row" style="margin-top:10px">
+    <button class="sq" data-s="up">▲</button><button class="sq" data-s="down">▼</button>
+    <button class="sq" data-s="left">◀</button><button class="sq" data-s="right">▶</button>
+    <button id="tapBtn">Click</button>
+  </div>
+  <div class="row"><button id="airBtn">Air mouse: off</button><button id="mouseOff">Hide pointer</button></div>
+  <div class="note">Air mouse: point the phone at the TV and move it like a remote. The pointer hides itself after 2 minutes without use.</div>
+</div>
+
+<div class="card">
+  <h2>Send a link to the TV</h2>
+  <input type="url" id="link" placeholder="https://www.youtube.com/watch?v=...">
+  <div class="row" style="margin-top:10px"><button id="sendLink">Open on TV</button></div>
+</div>
+
+<div class="card">
+  <h2>Apps</h2>
+  <select id="apps"><option>Loading…</option></select>
+  <div class="row" style="margin-top:10px"><button id="openApp">Open</button><button class="danger" id="delApp">Uninstall</button></div>
+  <input type="text" id="storeQ" placeholder="Get a new app: type its name, e.g. Disney" style="margin-top:12px">
+  <div class="row" style="margin-top:10px"><button id="storeBtn">Find on Play Store</button><button id="homeBtn">Home screen</button></div>
+  <div class="note">Install an APK file:</div>
+  <input type="file" id="apk" accept=".apk,application/vnd.android.package-archive">
+  <div class="row" style="margin-top:10px"><button id="sendApk">Send APK to TV</button></div>
+</div>
+
+<div class="card">
+  <h2>Wallpaper</h2>
+  <select id="wall">
+    <option value="all">Everything (my photos, planes, cars, bikes)</option><option value="mine">My photos</option>
+    <option value="plane">Planes</option><option value="car">Cars</option><option value="bike">Bikes</option><option value="off">Off (theme colours)</option>
+  </select>
+  <div class="note">Add your own photo (any size, it's cropped to the TV screen):</div>
+  <input type="file" id="photo" accept="image/*">
+  <label class="chk"><input type="checkbox" id="photoTheme" checked> Make the theme match this photo's colours</label>
+  <div class="row" style="margin-top:10px"><button class="primary" id="sendPhoto">Add to TV</button></div>
+  <div class="list" id="myPhotos" style="margin-top:10px"></div>
+</div>
+
+<div class="card">
+  <h2>Theme</h2>
+  <select id="theme"></select>
+  <div class="row" style="margin-top:10px"><button id="festBtn">Festival themes</button></div>
+</div>
+
+<div class="card">
+  <h2>Startup animation</h2>
+  <div class="row"><button id="introBtn">Startup animation</button></div>
+  <div class="note" id="introInfo">Plays when the TV turns on.</div>
+  <div class="note">Use your own video instead (MP4, e.g. made with an AI video app):</div>
+  <input type="file" id="introVid" accept="video/mp4,video/*">
+  <div class="row" style="margin-top:10px"><button id="sendIntro">Upload video</button><button id="clearIntro">Use plane intro</button></div>
+</div>
+
+<div class="card">
+  <h2>Mode</h2>
+  <div class="row" id="modes"></div>
+  <div class="note" id="modeNow"></div>
+</div>
+
+<div class="card">
+  <h2>Screen time today</h2>
+  <div class="list" id="st">…</div>
+</div>
+
+<div class="card">
+  <h2>Report a problem</h2>
+  <input type="text" id="repName" placeholder="Your name">
+  <textarea id="repText" placeholder="What went wrong? Type or tap the mic. Malayalam or English is fine." style="margin-top:10px"></textarea>
+  <div class="row" style="margin-top:10px">
+    <button id="micMl">🎤 Malayalam</button><button id="micEn">🎤 English</button>
+  </div>
+  <div class="row"><button class="primary" id="sendRep">Send report</button></div>
+  <div class="note">Reports are saved on the TV. Claude reads them and fixes problems in the next update.</div>
+</div>
+
+<div class="card">
+  <h2>Problems found by ADRUU</h2>
+  <div class="list" id="bugs">…</div>
+  <div class="row" style="margin-top:10px"><button id="checkBtn">Check now</button><button id="clearBugs">Clear list</button></div>
+</div>
+
+<div class="card">
+  <h2>Settings</h2>
+  <div class="row">
+    <button id="guestBtn">Guest mode</button>
+    <button id="clickBtn">Click sounds</button>
+    <button id="perfBtn">CPU / RAM display</button>
+  </div>
+  <div class="row" id="nativeRow" style="display:none"><button id="connBtn">Connection (home / away)</button></div>
+  <div class="note">For arrow keys and typing you can also use the Google Home app's TV remote.</div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const T = new URLSearchParams(location.search).get('t') || '';
+const $ = id => document.getElementById(id);
+const NATIVE = window.ADRUU || null;
+let S = {};
+
+async function call(path, opts = {}) {
+  const sep = path.includes('?') ? '&' : '?';
+  try {
+    const r = await fetch(path + sep + 't=' + encodeURIComponent(T), opts);
+    const j = await r.json().catch(() => ({ ok:false, error:'No answer from the TV' }));
+    if (!j.ok && j.error) toast(j.error);
+    return j;
+  } catch (e) { toast('Can\'t reach the TV'); return { ok:false }; }
+}
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(t._h); t._h = setTimeout(() => t.style.display = 'none', 2600); }
+function setOn(btn, on, labelOn, labelOff) { btn.classList.toggle('on', !!on); if (labelOn) btn.textContent = on ? labelOn : labelOff; }
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+const config = body => call('/api/config', { method:'POST', body: JSON.stringify(body) }).then(refresh);
+async function upload(path, file, label) {
+  if (!file) return toast('Choose a file first');
+  toast('Sending ' + label + '…');
+  try {
+    const r = await fetch(path + (path.includes('?') ? '&' : '?') + 't=' + encodeURIComponent(T), { method:'POST', body:file });
+    const j = await r.json().catch(() => ({}));
+    toast(j.message || j.error || 'Sent');
+    return j;
+  } catch (e) { toast('Upload failed'); return {}; }
+}
+
+async function refresh() {
+  S = await call('/api/status');
+  if (!S.ok) return;
+  $('ver').textContent = 'TV app ' + (S.version || '') + (NATIVE ? ' · phone app ' + NATIVE.appVersion() : '');
+  $('lockDot').classList.toggle('locked', S.locked);
+  $('lockText').textContent = S.locked ? 'TV is locked' : (S.lockOn ? 'TV is unlocked' : (S.hasPin ? 'TV lock is switched off' : 'No PIN set yet'));
+  const modes = [['auto','Auto'],['normal','Normal'],['movie','Movie'],['music','Music'],['game','Game']];
+  $('modes').innerHTML = '';
+  for (const [id, name] of modes) {
+    const b = document.createElement('button'); b.textContent = name; setOn(b, S.mode === id);
+    b.onclick = () => call('/api/mode?id=' + id).then(refresh); $('modes').appendChild(b);
+  }
+  $('modeNow').textContent = S.mode === 'auto' ? 'Right now: ' + S.modeNow : '';
+  const th = $('theme'); th.innerHTML = '';
+  for (const t of S.themes) { const o = document.createElement('option'); o.value = t.id; o.textContent = t.name; o.selected = t.id === S.theme; th.appendChild(o); }
+  $('wall').value = S.wallpaper || 'all';
+  setOn($('festBtn'), S.festival); setOn($('guestBtn'), S.guest); setOn($('clickBtn'), S.clicks);
+  setOn($('introBtn'), S.intro, 'Startup animation: on', 'Startup animation: off'); setOn($('perfBtn'), S.perf);
+  $('introInfo').textContent = S.introVideoMB >= 0 ? 'Playing your own video (' + S.introVideoMB + ' MB, limit ' + S.maxIntroMB + ' MB).' : 'Playing the plane intro. Video limit: ' + S.maxIntroMB + ' MB.';
+  const recent = (S.events || []).filter(e => Date.now() - e.t < 24 * 3600e3 && /Wrong PIN|Too many/.test(e.text));
+  $('alerts').innerHTML = recent.slice(0, 3).map(e => `<div class="alert">⚠ ${esc(e.text)} · ${new Date(e.t).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})}</div>`).join('');
+}
+
+async function screenTime() {
+  const j = await call('/api/screentime'); if (!j.ok) return;
+  const fmt = m => m >= 60 ? Math.floor(m/60) + ' h ' + (m%60) + ' min' : m + ' min';
+  $('st').innerHTML = `<div><b>Total</b><b>${fmt(j.totalMinutes)}</b></div>` + j.apps.slice(0, 8).map(a => `<div><span>${esc(a.label)}</span><span>${fmt(a.minutes)}</span></div>`).join('');
+}
+async function apps() {
+  const j = await call('/api/apps'); if (!j.ok) return;
+  $('apps').innerHTML = j.apps.map(a => `<option value="${esc(a.pkg)}">${esc(a.label)}</option>`).join('');
+}
+async function photos() {
+  const j = await call('/api/wallpaper/list'); if (!j.ok) return;
+  $('myPhotos').innerHTML = j.photos.length === 0 ? '' : j.photos.map(p => `<div><span>${esc(p.name)} · ${p.kb} KB</span><button class="mini danger" data-del="${esc(p.name)}">Delete</button></div>`).join('');
+  document.querySelectorAll('[data-del]').forEach(b => b.onclick = () => call('/api/wallpaper/delete?name=' + encodeURIComponent(b.dataset.del)).then(photos));
+}
+async function bugs(path = '/api/reports') {
+  const j = await call(path); if (!j.ok) return;
+  $('bugs').innerHTML = j.reports.length === 0 ? '<div><span>No problems found</span><span>✓</span></div>' :
+    j.reports.slice(0, 8).map(r => `<div><span>${esc(r.summary)}</span><span>${new Date(r.time).toLocaleDateString([], {day:'numeric', month:'short'})}</span></div>`).join('');
+}
+
+// --- remote, power ---
+document.querySelectorAll('[data-k]').forEach(b => b.onclick = () => call('/api/key?k=' + b.dataset.k));
+$('pwrOff').onclick = () => call('/api/power?state=off').then(j => j.ok && toast('TV going to standby'));
+$('pwrOn').onclick = () => call('/api/power?state=on').then(j => j.ok && toast('Waking the TV'));
+$('unlockBtn').onclick = () => call('/api/unlock').then(j => { if (j.ok) toast('TV unlocked'); refresh(); });
+$('lockBtn').onclick = () => call('/api/lock').then(j => { if (j.ok) toast('TV locked'); refresh(); });
+
+// --- touchpad: drag moves the pointer, quick tap clicks ---
+(() => {
+  const pad = $('pad'); let last = null, moved = 0, t0 = 0, acc = [0, 0], busy = false;
+  const flush = async () => {
+    if (busy || (acc[0] === 0 && acc[1] === 0)) return;
+    busy = true; const [dx, dy] = acc; acc = [0, 0];
+    await call(`/api/mouse/move?dx=${Math.round(dx)}&dy=${Math.round(dy)}`); busy = false;
+  };
+  setInterval(flush, 45);
+  pad.addEventListener('pointerdown', e => { last = [e.clientX, e.clientY]; moved = 0; t0 = Date.now(); pad.setPointerCapture(e.pointerId); });
+  pad.addEventListener('pointermove', e => {
+    if (!last) return;
+    const dx = e.clientX - last[0], dy = e.clientY - last[1]; last = [e.clientX, e.clientY];
+    moved += Math.abs(dx) + Math.abs(dy); const k = 2.6;
+    acc[0] += dx * k; acc[1] += dy * k;
+  });
+  pad.addEventListener('pointerup', () => { if (moved < 8 && Date.now() - t0 < 300) call('/api/mouse/tap'); last = null; });
+  $('tapBtn').onclick = () => call('/api/mouse/tap');
+  document.querySelectorAll('[data-s]').forEach(b => b.onclick = () => call('/api/mouse/scroll?dir=' + b.dataset.s));
+  $('mouseOff').onclick = () => call('/api/mouse?on=0');
+
+  // Air mouse: phone rotation speed (gyroscope) moves the pointer.
+  let air = false;
+  const onMotion = e => {
+    const r = e.rotationRate; if (!r) return;
+    acc[0] += -(r.alpha || 0) * 0.55;
+    acc[1] += -(r.beta || 0) * 0.55;
+  };
+  $('airBtn').onclick = async () => {
+    air = !air;
+    if (air && typeof DeviceMotionEvent !== 'undefined' && DeviceMotionEvent.requestPermission) {
+      try { await DeviceMotionEvent.requestPermission(); } catch (e) {}
+    }
+    if (air) window.addEventListener('devicemotion', onMotion); else window.removeEventListener('devicemotion', onMotion);
+    setOn($('airBtn'), air, 'Air mouse: on', 'Air mouse: off');
+    if (air) call('/api/mouse/move?dx=0&dy=0');
+  };
+})();
+
+// --- links, apps ---
+$('sendLink').onclick = () => { const u = $('link').value.trim(); if (!u) return toast('Paste a link first'); call('/api/open?url=' + encodeURIComponent(u)).then(j => j.ok && toast('Opening on TV')); };
+$('openApp').onclick = () => call('/api/launch?pkg=' + encodeURIComponent($('apps').value)).then(j => j.ok && toast('Opening'));
+$('delApp').onclick = () => { if (confirm('Uninstall ' + $('apps').selectedOptions[0].text + '? The TV will ask to confirm.')) call('/api/apps/uninstall?pkg=' + encodeURIComponent($('apps').value)).then(j => j.ok && toast(j.message)); };
+$('storeBtn').onclick = () => { const q = $('storeQ').value.trim(); if (!q) return toast('Type an app name'); call('/api/apps/store?q=' + encodeURIComponent(q)).then(j => j.ok && toast(j.message)); };
+$('homeBtn').onclick = () => call('/api/home');
+$('sendApk').onclick = () => upload('/api/apk', $('apk').files[0], 'app');
+
+// --- wallpaper, theme, intro ---
+$('wall').onchange = e => config({ wallpaper: e.target.value });
+$('sendPhoto').onclick = async () => { await upload('/api/wallpaper/upload?theme=' + ($('photoTheme').checked ? 1 : 0), $('photo').files[0], 'photo'); photos(); refresh(); };
+$('theme').onchange = e => call('/api/theme?id=' + e.target.value).then(refresh);
+$('festBtn').onclick = () => config({ festival: !S.festival });
+$('introBtn').onclick = () => config({ intro: !S.intro });
+$('sendIntro').onclick = async () => {
+  const f = $('introVid').files[0];
+  if (f && S.maxIntroMB && f.size > S.maxIntroMB * 1048576) return toast('Video is over ' + S.maxIntroMB + ' MB');
+  await upload('/api/intro/upload', f, 'video'); refresh();
+};
+$('clearIntro').onclick = () => call('/api/intro/clear').then(j => { toast(j.message || 'Done'); refresh(); });
+
+// --- reports (voice typing in the phone app) ---
+window.onVoice = text => { const t = $('repText'); t.value = (t.value ? t.value + ' ' : '') + text; };
+const mic = lang => NATIVE && NATIVE.voice ? NATIVE.voice(lang) : toast('Tap the mic on your keyboard to speak');
+$('micMl').onclick = () => mic('ml-IN');
+$('micEn').onclick = () => mic('en-IN');
+$('sendRep').onclick = async () => {
+  const text = $('repText').value.trim(); if (!text) return toast('Write or say what went wrong');
+  const j = await call('/api/reports/add', { method:'POST', body: JSON.stringify({ name: $('repName').value.trim() || 'Family', text }) });
+  if (j.ok) { toast(j.message); $('repText').value = ''; bugs(); }
+};
+$('checkBtn').onclick = () => bugs('/api/reports/check').then(() => toast('Checked'));
+$('clearBugs').onclick = () => call('/api/reports/clear').then(() => bugs());
+
+// --- settings ---
+$('guestBtn').onclick = () => config({ guest: !S.guest });
+$('clickBtn').onclick = () => config({ clicks: !S.clicks });
+$('perfBtn').onclick = () => config({ perf: !S.perf });
+if (NATIVE) {
+  $('nativeRow').style.display = 'flex';
+  $('connBtn').onclick = () => NATIVE.connection();
+  try { $('repName').value = NATIVE.savedName() || ''; } catch (e) {}
+  $('repName').onchange = () => { try { NATIVE.saveName($('repName').value); } catch (e) {} };
+  call('/api/remote/version').then(j => {
+    if (j.ok && j.versionCode > NATIVE.appVersionCode()) {
+      $('update').innerHTML = '<div class="card"><h2>New phone app version</h2><div class="row"><button class="primary" id="updBtn">Update ADRUU Remote</button></div></div>';
+      $('updBtn').onclick = () => NATIVE.update(location.origin + '/api/remote/apk?t=' + encodeURIComponent(T));
+    }
+  });
+}
+
+const shared = new URLSearchParams(location.search).get('url');
+if (shared) $('link').value = shared;
+
+refresh(); apps(); screenTime(); bugs(); photos();
+setInterval(refresh, 6000);
+</script>
+</body>
+</html>

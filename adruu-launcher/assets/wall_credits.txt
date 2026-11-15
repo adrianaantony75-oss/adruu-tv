@@ -1,0 +1,18 @@
+Wallpaper photos from Wikimedia Commons, used under their free licenses.
+
+wall_plane-01.jpg: "B-2487@PEK (20190630192003).jpg" by N509FZ, CC BY-SA 4.0 - https://commons.wikimedia.org/wiki/File:B-2487@PEK_(20190630192003).jpg
+wall_plane-02.jpg: "Biman Bangladesh Airlines Boeing 787 Dreamliner 2.jpg" by Jubair Bin Iqbal, CC BY-SA 4.0 - https://commons.wikimedia.org/wiki/File:Biman_Bangladesh_Airlines_Boeing_787_Dreamliner_2.jpg
+wall_plane-03.jpg: "Boeing 747 landing at Barcelona in a golden sunset.jpg" by Jordi Cucurull, CC BY-SA 2.0 - https://commons.wikimedia.org/wiki/File:Boeing_747_landing_at_Barcelona_in_a_golden_sunset.jpg
+wall_plane-04.jpg: "Boeing 787-8 first flight tarmac.jpg" by Dave Sizer from Seattle, WA, USA, CC BY 2.0 - https://commons.wikimedia.org/wiki/File:Boeing_787-8_first_flight_tarmac.jpg
+wall_plane-05.jpg: "Lufthansa Airbus A380 D-AIMA MD4.jpg" by Acroterion, CC BY-SA 4.0 - https://commons.wikimedia.org/wiki/File:Lufthansa_Airbus_A380_D-AIMA_MD4.jpg
+wall_plane-06.jpg: "Lufthansa Airbus A380 D-AIMC MD3.jpg" by Acroterion, CC BY-SA 4.0 - https://commons.wikimedia.org/wiki/File:Lufthansa_Airbus_A380_D-AIMC_MD3.jpg
+wall_plane-07.jpg: "Singapore Airlines Airbus A380 at Sydney Airport room added.jpg" by Damien Aiello, room added by Jebulon, CC BY-SA 4.0 - https://commons.wikimedia.org/wiki/File:Singapore_Airlines_Airbus_A380_at_Sydney_Airport_room_added.jpg
+wall_car-08.jpg: "Ferrari-Monaco-4071008.jpg" by ermell, CC BY-SA 4.0 - https://commons.wikimedia.org/wiki/File:Ferrari-Monaco-4071008.jpg
+wall_car-09.jpg: "Ferrari 296 GTB 1X7A6377.jpg" by Alexander Migl, CC BY-SA 4.0 - https://commons.wikimedia.org/wiki/File:Ferrari_296_GTB_1X7A6377.jpg
+wall_car-11.jpg: "Ferrari LaFerrari at the Ferrari museum.jpg" by Maty?? Sola??k, CC BY-SA 4.0 - https://commons.wikimedia.org/wiki/File:Ferrari_LaFerrari_at_the_Ferrari_museum.jpg
+wall_car-12.jpg: "Porsche 911 GT3 Touring, IAA 2017, Frankfurt (1Y7A2766).jpg" by Matti Blume, CC BY-SA 4.0 - https://commons.wikimedia.org/wiki/File:Porsche_911_GT3_Touring,_IAA_2017,_Frankfurt_(1Y7A2766).jpg
+wall_car-13.jpg: "Paris Motor Show 2018, Paris (1Y7A1632).jpg" by Matti Blume, CC BY-SA 4.0 - https://commons.wikimedia.org/wiki/File:Paris_Motor_Show_2018,_Paris_(1Y7A1632).jpg
+wall_bike-14.jpg: "Ducati-Panigale-V4-clarkintlspeedwayph-californiasuperbike-trackday-7285-2025.jpg" by Monkinvideos, CC BY-SA 4.0 - https://commons.wikimedia.org/wiki/File:Ducati-Panigale-V4-clarkintlspeedwayph-californiasuperbike-trackday-7285-2025.jpg
+wall_bike-15.jpg: "1998 Yamaha YZF-R1 in the Yamaha Communication Plaza.JPG" by Rainmaker47, CC BY-SA 4.0 - https://commons.wikimedia.org/wiki/File:1998_Yamaha_YZF-R1_in_the_Yamaha_Communication_Plaza.JPG
+wall_bike-16.jpg: "BMW S1000 RR Studio.JPG" by Stefan Krause, Germany, CC BY-SA 3.0 - https://commons.wikimedia.org/wiki/File:BMW_S1000_RR_Studio.JPG
+wall_bike-17.jpg: "DSC 0432 (14836291388).jpg" by Darren Garlick, CC0 - https://commons.wikimedia.org/wiki/File:DSC_0432_(14836291388).jpg
