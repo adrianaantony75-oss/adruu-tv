@@ -1,82 +1,82 @@
 # ADRUU TV
 
-A light, custom home screen for Android TV / Google TV, plus a phone remote app.
-Built for a 2 GB TCL Google TV (Android 11) that lagged badly with the stock home screen.
+A lightweight custom home screen for Android TV / Google TV, with a companion phone remote app.
+
+ADRUU was built for a 2 GB TCL Google TV (Android 11) that lagged with the stock launcher. It is written
+in plain Java against the Android SDK, uses no third-party libraries and the APK is about 5 MB.
 
 | | |
 |---|---|
 | ![Home](docs/home.jpg) | ![Scrolled](docs/scrolled.jpg) |
-| Home: clock, 12-hour weather, quick buttons, apps | Website-style scroll: header slides away, wallpaper parallax |
+| Home: clock, 12-hour weather, quick buttons, apps | Scroll animation: header slides away, wallpaper parallax |
 | ![Photo theme](docs/photo-theme.jpg) | ![Pairing](docs/pairing.jpg) |
 | Your own photo as wallpaper, theme colours picked from it | Phone pairing with a 4-digit code on the TV |
 
-## What's inside
+## Features
 
-**TV app (`adruu-launcher`, ~4.7 MB, no libraries)**
-- Tablet-style home screen, favourite streaming apps first, smooth focus animations
-- Website-style scroll animation with parallax photo wallpaper (planes, cars, bikes, or your own photos)
-- Themes, festival themes by date (Onam, Vishu, Diwali, Christmas, New Year), theme from your photo
-- Clock, date, current weather and a scrollable next-12-hours strip (temperature, rain chance, wind) via Open-Meteo
-- Startup animation (a jet lands, a pilot walks out and waves) with generated sound, or your own video
-- 6-digit PIN lock (optional), guest mode, screen time, modes (Auto / Movie / Music / Game → do-not-disturb)
-- Mouse pointer for apps that need one; key interception only while it's on (no added lag)
-- Built-in bug-report bot: records crashes, freezes and settings that got switched off; repairs its own accessibility service
-- Local HTTP API (token protected) used by the phone app and by Claude for live changes
+### TV app (`adruu-launcher`)
+- Tablet-style home screen with favourite streaming apps first and smooth focus animations
+- Scroll animation with parallax photo wallpapers (planes, cars, bikes, or your own photo albums with slideshow)
+- Themes, including a theme generated from your photo and festival themes that switch by date
+  (Onam, Vishu, Diwali, Christmas, Eid, Holi, Independence Day and more)
+- Clock, date, current weather and a next-12-hours forecast strip from [Open-Meteo](https://open-meteo.com)
+- Animated startup intro with synthesised sound, or a custom startup video
+- Optional 6-digit PIN lock, instant lock from the phone, guest mode, screen time per app
+- Viewing modes (Auto / Movie / Music / Game) that control do-not-disturb
+- On-screen mouse pointer for apps that need one (key interception only while it is on)
+- Built-in health monitor: records crashes, freezes and disabled settings, and repairs its own accessibility service
+- Token-protected local HTTP API used by the phone app and by scripts ([API reference](docs/API.md))
 
-**Phone app (`adruu-remote`, ~24 KB)**
-- Finds the TV on your Wi-Fi, pairs with the code shown on the TV
-- Remote buttons, volume (reaches an HDMI-CEC soundbar), touchpad + air mouse, scroll buttons
-- Send links to the TV, open / uninstall apps, find apps on the Play Store, install APKs
-- Upload wallpaper photos and a custom startup video; lock / unlock; screen time
-- Family "Report a problem" with voice typing (Malayalam or English); reports are saved on the TV
-- Updates itself from the TV; an "away" address (Tailscale) lets you control the TV from anywhere
+### Phone app (`adruu-remote`, under 100 KB)
+- Finds the TV on your Wi-Fi and pairs with the code shown on screen
+- Remote buttons, soundbar volume over HDMI-CEC, touchpad, air mouse and scroll
+- Send links to the TV, open or uninstall apps, search the Play Store, install APKs
+- Upload wallpaper photos and a startup video, lock / unlock, view screen time
+- "Report a problem" with voice typing in Malayalam or English
+- Push alerts through [ntfy](https://ntfy.sh) (TV turned on, wrong PIN, locked TV in use)
+- Remote control away from home through Tailscale
+- Updates itself from the TV
 
-### New in 2.0
-- Professional redesign of the phone app: tab bar (Home · Remote · Apps · Personalize · Settings), Manrope font,
-  colours that follow the TV's festival theme
-- Instant lock / unlock (works without a PIN), set the PIN from the phone, lock-on-power-on
-- Lock-screen "intruder" moment: a man points at whoever tries the locked TV and says your dialogue
-  (default "നീ പോ മോനേ ദിനേശാ", spoken in Malayalam); use your own picture, text or voice clip
-- Phone alerts via ntfy (TV turned on, wrong PIN, someone using the locked TV)
-- Festival themes switch by themselves: Republic Day, Pongal, Holi, Eid, Vishu, Independence Day, Onam,
-  Gandhi Jayanti, Diwali, Christmas, New Year
-- Wallpaper albums + slideshow, rounded or square tiles, hold OK to rearrange tiles, uninstall several apps,
-  web search on the TV, startup video up to 200 MB, intro replays on every power-on and waits for the soundbar
-
-## Publishing on Google Play (to do)
-- Developer account (one-time fee), privacy policy URL, store listing, screenshots, content rating, Data safety form
-- Phone app targets API 35 (current requirement). The TV app targets API 30 and uses ADB-granted permissions,
-  an accessibility service and a HOME screen: Play reviews these strictly (accessibility needs a declaration),
-  so the TV app is best shipped as a separate Android TV listing after review, or kept as a sideload.
-- Bundled wallpapers are CC BY-SA: keep `wall_credits.txt` reachable from the app (it is, under Settings).
+## Tech stack
+- Java 8 language level, Android SDK (TV app targets API 30, phone app targets API 35)
+- Built without Gradle: `aapt2 → javac → d8 → zipalign → apksigner`, driven by PowerShell scripts
+- Embedded HTTP server and a single-file HTML/CSS/JS control page served from the TV
+- Open-Meteo weather API, ntfy push notifications
 
 ## Install
 Download the APKs from [Releases](../../releases).
-- **TV:** enable USB debugging on the TV, then `adb install ADRUU.apk`. Making it the home screen on Google TV,
-  the permissions it needs and how to undo everything are in [CLAUDE.md](CLAUDE.md)
-  and [adruu-launcher/tests/undo-tv-changes.ps1](adruu-launcher/tests/undo-tv-changes.ps1).
-- **Phone:** install `ADRUU-Remote.apk` (allow "install unknown apps"), open it on the same Wi-Fi as the TV.
+
+- **TV:** enable USB debugging, then `adb install ADRUU-TV-2.0.apk`. Making it the default home screen
+  on Google TV and the permissions it needs are described in [docs/API.md](docs/API.md).
+  [`undo-tv-changes.ps1`](adruu-launcher/tests/undo-tv-changes.ps1) reverts every change.
+- **Phone:** install `ADRUU-Remote-2.0.apk` (allow "install unknown apps") and open it on the same Wi-Fi as the TV.
 
 ## Build
-No Gradle. Needs JDK 17 and Android SDK build-tools 34 + platform 30 (Windows PowerShell scripts):
-```
-powershell -File adruu-remote\build.ps1
+Requires JDK 17 and Android SDK build-tools 34 + platform 30 (Windows, PowerShell). The scripts look for the
+JDK in `%LOCALAPPDATA%\ADRUU-tools\jdk` and the SDK in `%LOCALAPPDATA%\Android`.
+
+```powershell
+powershell -File adruu-remote\build.ps1      # build the phone app first: the TV app bundles it
 powershell -File adruu-launcher\build.ps1
+adb install -r adruu-launcher\ADRUU.apk
 ```
-Signing keys are created on first build in `%LOCALAPPDATA%\ADRUU-tools\keys` and are never committed.
+Signing keys are created on the first build in `%LOCALAPPDATA%\ADRUU-tools\keys` and are never committed.
 
 ## Tests
-- `adruu-launcher/tests/api-test.ps1`: API tests, safe while someone watches TV
-- `adruu-launcher/tests/tv-test.ps1`: on-screen test, restarts the TV
-- `adruu-launcher/tests/com/adruu/tv/LogicTest.java`: festival dates, modes, themes
+- `adruu-launcher/tests/com/adruu/tv/LogicTest.java` — festival dates, modes and themes
+- `adruu-launcher/tests/api-test.ps1` — API tests with no on-screen effects
+- `adruu-launcher/tests/tv-test.ps1` — on-screen end-to-end test (restarts the TV)
 
 ## Known limits
-- On this TCL TV, standby switches Wi-Fi off, so the phone can turn the TV **off** but not back **on**.
-- Updating the app that is currently the home screen can trigger an Android 11 window-manager crash that
-  restarts the TV once (~30 s). Update when nobody is watching.
-- Picture presets (Movie/Game picture modes) are private to TCL, so ADRUU modes only control notifications.
+- On the tested TCL TV, standby turns Wi-Fi off, so the phone can switch the TV **off** but not back **on**.
+- Updating the app that is currently the home screen can trigger an Android 11 window-manager restart (~30 s).
+- TCL picture presets are private, so ADRUU modes control notifications only.
+- The TV app uses ADB-granted permissions and an accessibility service, so it is distributed as a sideload
+  rather than through Google Play.
 
 ## Credits and license
-Code: MIT (see [LICENSE](LICENSE)). Wallpaper photos: Wikimedia Commons, own licenses, see
-[wall_credits.txt](adruu-launcher/assets/wall_credits.txt). Weather: [Open-Meteo](https://open-meteo.com).
-Built with Claude.
+Code is MIT licensed (see [LICENSE](LICENSE)). Wallpaper photos are from Wikimedia Commons under their own
+licenses; see [wall_credits.txt](adruu-launcher/assets/wall_credits.txt). Fonts: Manrope and a Malayalam font
+under the SIL Open Font License. Weather data by [Open-Meteo](https://open-meteo.com).
+
+Designed and developed by Adrian A. Antony.

@@ -10,9 +10,9 @@ default home screen (Google TV home + setup fallback disabled), TCL ads/analytic
 12-hour weather, photo wallpapers + upload + theme from photo, custom startup video (≤100 MB), bug-report bot
 with self-repair, family reports (Malayalam), phone touchpad/air mouse/scroll/power/apps/uninstall, phone app
 self-update from the TV, sound set for Sony HT-S500RF on HDMI ARC.
-Left on the TV from testing (tidy up next session, when nobody is watching): a test Ferrari photo in "My photos"
+Left on the TV from testing (to tidy up when nobody is watching): a test Ferrari photo in "My photos"
 with the "From my photo" theme selected; switch back with `/api/config {"theme":"midnight","wallpaper":"all"}`
-and `/api/wallpaper/delete`. The TV was put on standby at the end (family prayer time).
+and `/api/wallpaper/delete`.
 Not done: video wallpapers (too heavy for 2 GB RAM), turning the TV ON from the phone (standby cuts Wi-Fi),
 AI assistant, Atmos (the HT-S500RF doesn't list Atmos), live cricket bar, button remapping, weekly backup.
 
@@ -22,7 +22,7 @@ Working on the TV: landing intro + sound · tablet home with favourites first ·
 (on/off, after standby, 5-try lockout, wrong-PIN alerts) · minimal settings · modes (Auto/Normal/Movie/
 Music/Game → do-not-disturb) · mouse pointer over any app · CPU/RAM overlay · screen time · guest mode ·
 phone page (unlock/lock, modes, mouse, send link, open app, install APK, theme, screen time, alerts) ·
-Claude live control API (see CLAUDE.md).
+token-protected live control API (see docs/API.md).
 Not yet the default home screen (Google TV's home still opens with the Home button).
 
 ### Bug test 2026-11-15 (ADRUU 1.2)
@@ -35,7 +35,7 @@ Not yet the default home screen (Google TV's home still opens with the Home butt
   (granted TCL appop APP_AUTO_START).
 - OPEN: TCL's memory guard (TGuard) kills ADRUU every time it runs in the background while another app
   (e.g. YouTube) is playing; Android's restart back-off then grows (44 s → 3 min). While that happens the
-  phone page, unlock-from-phone, Claude control, Auto mode and the mouse pointer are unavailable.
+  phone page, unlock-from-phone, the control API, Auto mode and the mouse pointer are unavailable.
   Likely fix: make ADRUU the default home screen (TGuard spares the current launcher) — not yet verified.
 
 Still to build: AI assistant · unlock from anywhere (Tailscale) · Atmos passthrough tweak ·
@@ -166,7 +166,7 @@ plus NetMirror, CineHD and "com.community.newroom" (flagged — see chat).
 - ✅ Weekly automatic backup of the whole ADRUU setup
 - ✅ Do-not-disturb during movies (no pop-ups)
 
-## 12. Remote access for Claude and you
+## 12. Remote access
 - Private network (Tailscale) on the TV and this PC so ADB works from anywhere, never exposed to the open internet
 - Same channel powers "unlock from phone anywhere"
-- Claude can connect whenever you open a session on this PC — not a 24/7 background service
+- ADB from the PC works only while the PC is on — not a 24/7 background service

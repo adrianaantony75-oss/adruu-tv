@@ -38,7 +38,7 @@ final class Theme {
 
     /**
      * Festivals whose date moves each year: {year, month, day}. Approximate, from published calendars;
-     * add new years as they're announced (Claude can update these).
+     * add new years as they're announced.
      */
     private static final int[][] ONAM_DAYS = {{2026, 8, 26}, {2027, 9, 12}};     // Thiruvonam
     private static final int[][] DIWALI_DAYS = {{2026, 11, 8}, {2027, 10, 29}};  // Lakshmi Puja

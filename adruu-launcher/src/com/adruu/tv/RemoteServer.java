@@ -29,7 +29,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * Tiny HTTP server on the TV (port 8686) for the phone page and for Claude.
+ * Tiny HTTP server on the TV (port 8686) for the phone page and the control API.
  * Every request needs the secret token (?t=... or header X-ADRUU-Token).
  * Reachable on the home Wi-Fi, or from anywhere through a private Tailscale network.
  */
@@ -489,7 +489,7 @@ final class RemoteServer {
     }
 
     /**
-     * Live changes from the phone or from Claude. Any subset of:
+     * Live changes from the phone or the control API. Any subset of:
      * theme, festival, clicks, intro, perf, subtitles, city, mode, guest, lockOn (false only),
      * hidden[], favourites[], personal[].
      */

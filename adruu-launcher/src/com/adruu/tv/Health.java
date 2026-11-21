@@ -26,7 +26,7 @@ import java.util.Locale;
  *  - health problems found by a self-check every 30 minutes (mouse service off, permissions lost,
  *    server down, RAM very low).
  * Reports live in /sdcard/Android/data/com.adruu.tv/files/reports/ and at GET /api/reports, so the
- * phone app shows them and Claude can read them over ADB and ship a fixed version.
+ * phone app shows them and a developer can read them over ADB to ship a fixed version.
  */
 final class Health {
     private static final int MAX_REPORTS = 40;

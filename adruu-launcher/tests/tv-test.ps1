@@ -90,7 +90,7 @@ Invoke-RestMethod "$base/api/launch?pkg=com.google.android.youtube.tv&t=$t" | Ou
 $kills = [int](Sh "logcat -d | grep -c 'Killing.*com.adruu.tv.*tguard'")
 Check "ADRUU not killed while YouTube runs" ($kills -eq 0) "$kills kills"
 $code = 0; try { $code = (Invoke-WebRequest "$base/api/status?t=$t" -UseBasicParsing -TimeoutSec 15).StatusCode } catch { }
-Check "phone/Claude server answers during YouTube" ($code -eq 200)
+Check "phone/control server answers during YouTube" ($code -eq 200)
 Sh "input keyevent HOME" | Out-Null; Start-Sleep -Seconds 4
 Check "Home from YouTube returns to ADRUU" ((Focus) -match 'com.adruu.tv') (Focus)
 

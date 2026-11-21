@@ -4,7 +4,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 
-/** Starts ADRUU's background service (phone page, modes, Claude control) at boot and after every update. */
+/** Starts ADRUU's background service (phone page, modes, control API) at boot and after every update. */
 public class BootReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context c, Intent i) {

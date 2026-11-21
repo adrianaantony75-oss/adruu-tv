@@ -17,7 +17,7 @@ import android.view.accessibility.AccessibilityEvent;
 /**
  * Mouse pointer mode. While on: arrow keys move the pointer (faster when held),
  * OK clicks where the pointer is, pushing past the top/bottom edge scrolls, Back turns it off.
- * Turned on from the ADRUU home screen, the phone page, or by Claude.
+ * Turned on from the ADRUU home screen, the phone page, or through the control API.
  */
 public class MouseService extends AccessibilityService {
     private static MouseService sInstance;

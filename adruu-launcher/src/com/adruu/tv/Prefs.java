@@ -128,8 +128,8 @@ final class Prefs {
     }
     void personal(List<String> pkgs) { putList("personal", pkgs); }
 
-    // ---- phone / Claude control ----
-    /** Secret for the phone page and Claude control. Created once. */
+    // ---- phone / API control ----
+    /** Secret for the phone page and the control API. Created once. */
     String token() {
         String t = p.getString("token", null);
         if (t == null) {

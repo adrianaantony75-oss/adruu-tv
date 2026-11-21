@@ -15,7 +15,7 @@ import android.provider.Settings;
 
 /**
  * Keeps ADRUU's background jobs alive while other apps are open:
- * the phone/Claude server, Auto mode switching, the bug-report bot and the performance overlay.
+ * the phone/control server, Auto mode switching, the bug-report bot and the performance overlay.
  * Slow work runs on a background thread so the TV's screen never stutters.
  */
 public class ControlService extends Service {
@@ -114,7 +114,7 @@ public class ControlService extends Service {
     }
 
     /**
-     * Writes the control address where ADB can read it, so Claude (on the PC, over ADB) can find it:
+     * Writes the control address where ADB can read it, so a PC tool (over ADB) can find it:
      * /sdcard/Android/data/com.adruu.tv/files/control.json
      */
     private void writeControlFile() {
@@ -135,7 +135,7 @@ public class ControlService extends Service {
         }
     }
 
-    /** Called when the token changes so Claude keeps finding the right link. */
+    /** Called when the token changes so PC tools keep finding the right link. */
     static void rewriteControlFile(Context c) {
         start(c);
     }

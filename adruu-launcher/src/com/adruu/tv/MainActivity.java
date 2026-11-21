@@ -155,7 +155,7 @@ public class MainActivity extends Activity {
         }
     };
 
-    /** Called when the phone page or Claude changed something. */
+    /** Called when the phone page or the control API changed something. */
     static void refreshFromOutside() {
         MainActivity a = sInstance.get();
         if (a == null || a.isDestroyed() || a.isFinishing()) return;

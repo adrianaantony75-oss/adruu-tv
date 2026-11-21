@@ -15,6 +15,5 @@ adruu-launcher/assets/remote.apk
 adruu-launcher/assets/remote-version.txt
 
 # Local tools / editor
-.claude/
 *.log
 *.idsig
